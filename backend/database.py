@@ -1,16 +1,19 @@
 import os
 import pandas as pd
-from sqlalchemy import create_engine, text
+import psycopg2
 from dotenv import load_dotenv
 
 load_dotenv()
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql://username:password@localhost:5432/dbname"
-)
-
-engine = create_engine(DATABASE_URL)
+# Database configuration like the working script
+DB_CONFIG = {
+    "dbname": "money_stuff",
+    "user": os.environ.get("DB_USER", "hhhector9"),
+    "password": os.environ.get("DB_PASSWORD", "REDACTED_PASSWORD"),
+    "host": "localhost",
+    "port": "5432",
+    "options": "-c search_path=budget_app"
+}
 
 async def get_transactions_data():
     """
@@ -25,11 +28,14 @@ async def get_transactions_data():
         transaction_date,
         account_type
     FROM budget_app.transactions_view
+    where spending_category NOT IN ( 'Installment')
     ORDER BY transaction_date DESC;
     """
     
     try:
-        df = pd.read_sql(query, engine)
+        conn = psycopg2.connect(**DB_CONFIG)
+        df = pd.read_sql(query, conn)
+        conn.close()
         return df
     except Exception as e:
         print(f"Database error: {e}")
@@ -38,9 +44,12 @@ async def get_transactions_data():
 def test_connection():
     """Test database connection"""
     try:
-        with engine.connect() as conn:
-            result = conn.execute(text("SELECT 1"))
-            return True
+        conn = psycopg2.connect(**DB_CONFIG)
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1")
+        cursor.close()
+        conn.close()
+        return True
     except Exception as e:
         print(f"Connection failed: {e}")
         return False
