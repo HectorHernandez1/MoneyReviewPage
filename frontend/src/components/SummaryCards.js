@@ -5,13 +5,22 @@ const SummaryCards = ({ summary }) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD'
-    }).format(amount || 0);
+    }).format(Math.abs(amount) || 0);
+  };
+
+  const getPeriodLabel = (period) => {
+    switch(period) {
+      case 'monthly': return 'This Month';
+      case 'quarterly': return 'This Quarter';
+      case 'ytd': return 'Year to Date';
+      default: return period;
+    }
   };
 
   return (
     <div className="summary-cards">
       <div className="summary-card">
-        <h3>Total Spent</h3>
+        <h3>Total Spent - {getPeriodLabel(summary.period)}</h3>
         <div className="amount">{formatCurrency(summary.total_amount)}</div>
       </div>
       

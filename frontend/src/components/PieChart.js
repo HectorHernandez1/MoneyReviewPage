@@ -48,12 +48,13 @@ const PieChart = ({ data }) => {
       .attr("stroke-width", 2)
       .style("cursor", "pointer");
 
-    arcs.append("text")
+    const percentageLabels = arcs.append("text")
       .attr("transform", d => `translate(${labelArc.centroid(d)})`)
       .attr("dy", ".35em")
       .style("text-anchor", "middle")
       .style("font-size", "12px")
       .style("fill", "white")
+      .style("opacity", 0)
       .text(d => {
         const percentage = ((d.endAngle - d.startAngle) / (2 * Math.PI) * 100).toFixed(1);
         return `${percentage}%`;
@@ -92,12 +93,18 @@ const PieChart = ({ data }) => {
           return pieData.data.spending_category === category ? 1 : 0.3;
         });
         
+        // Show percentage for the corresponding slice
+        percentageLabels.style("opacity", function(pieData) {
+          return pieData.data.spending_category === category ? 1 : 0;
+        });
+        
         // Highlight legend item
         d3.select(this).style("font-weight", "bold");
       })
       .on("mouseout", function() {
         // Reset all pie slices
         paths.style("opacity", 1);
+        percentageLabels.style("opacity", 0);
         
         // Reset legend items
         legendItems.style("font-weight", "normal");
@@ -113,6 +120,11 @@ const PieChart = ({ data }) => {
           return pieData.data.spending_category === category ? 1 : 0.3;
         });
         
+        // Show percentage for this slice
+        percentageLabels.style("opacity", function(pieData) {
+          return pieData.data.spending_category === category ? 1 : 0;
+        });
+        
         // Highlight corresponding legend item
         legendItems.style("font-weight", function(legendData) {
           return legendData.spending_category === category ? "bold" : "normal";
@@ -121,6 +133,7 @@ const PieChart = ({ data }) => {
       .on("mouseout", function() {
         // Reset all
         paths.style("opacity", 1);
+        percentageLabels.style("opacity", 0);
         legendItems.style("font-weight", "normal");
       });
 

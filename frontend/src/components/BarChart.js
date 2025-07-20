@@ -11,8 +11,8 @@ const BarChart = ({ data, period }) => {
     svg.selectAll("*").remove();
 
     const margin = { top: 20, right: 30, bottom: 80, left: 60 };
-    const width = 800 - margin.left - margin.right;
-    const height = 400 - margin.top - margin.bottom;
+    const width = 500 - margin.left - margin.right;
+    const height = 350 - margin.top - margin.bottom;
 
     const g = svg
       .attr("width", width + margin.left + margin.right)
