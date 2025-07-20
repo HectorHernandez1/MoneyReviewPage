@@ -10,15 +10,17 @@ const PieChart = ({ data }) => {
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
 
-    const width = 400;
+    const width = 600;
     const height = 400;
-    const radius = Math.min(width, height) / 2;
+    const chartWidth = 300;
+    const legendWidth = 200;
+    const radius = Math.min(chartWidth, height) / 2 - 10;
 
-    const g = svg
+    const chartG = svg
       .attr("width", width)
       .attr("height", height)
       .append("g")
-      .attr("transform", `translate(${width / 2},${height / 2})`);
+      .attr("transform", `translate(${chartWidth / 2},${height / 2})`);
 
     const color = d3.scaleOrdinal(d3.schemeCategory10);
 
@@ -27,23 +29,24 @@ const PieChart = ({ data }) => {
       .sort(null);
 
     const path = d3.arc()
-      .outerRadius(radius - 10)
+      .outerRadius(radius)
       .innerRadius(0);
 
     const labelArc = d3.arc()
-      .outerRadius(radius - 40)
-      .innerRadius(radius - 40);
+      .outerRadius(radius - 30)
+      .innerRadius(radius - 30);
 
-    const arcs = g.selectAll(".arc")
+    const arcs = chartG.selectAll(".arc")
       .data(pie(data))
       .enter().append("g")
       .attr("class", "arc");
 
-    arcs.append("path")
+    const paths = arcs.append("path")
       .attr("d", path)
       .attr("fill", (d, i) => color(i))
       .attr("stroke", "white")
-      .attr("stroke-width", 2);
+      .attr("stroke-width", 2)
+      .style("cursor", "pointer");
 
     arcs.append("text")
       .attr("transform", d => `translate(${labelArc.centroid(d)})`)
@@ -58,13 +61,14 @@ const PieChart = ({ data }) => {
 
     const legend = svg.append("g")
       .attr("class", "legend")
-      .attr("transform", `translate(20, 20)`);
+      .attr("transform", `translate(${chartWidth + 20}, 30)`);
 
     const legendItems = legend.selectAll(".legend-item")
       .data(data)
       .enter().append("g")
       .attr("class", "legend-item")
-      .attr("transform", (d, i) => `translate(0, ${i * 25})`);
+      .attr("transform", (d, i) => `translate(0, ${i * 25})`)
+      .style("cursor", "pointer");
 
     legendItems.append("rect")
       .attr("width", 18)
@@ -77,6 +81,48 @@ const PieChart = ({ data }) => {
       .attr("dy", "0.35em")
       .style("font-size", "12px")
       .text(d => d.spending_category);
+
+    // Add hover interactions
+    legendItems
+      .on("mouseover", function(event, d) {
+        const category = d.spending_category;
+        
+        // Highlight corresponding pie slice
+        paths.style("opacity", function(pieData) {
+          return pieData.data.spending_category === category ? 1 : 0.3;
+        });
+        
+        // Highlight legend item
+        d3.select(this).style("font-weight", "bold");
+      })
+      .on("mouseout", function() {
+        // Reset all pie slices
+        paths.style("opacity", 1);
+        
+        // Reset legend items
+        legendItems.style("font-weight", "normal");
+      });
+
+    // Add hover to pie slices as well
+    paths
+      .on("mouseover", function(event, d) {
+        const category = d.data.spending_category;
+        
+        // Highlight this slice
+        paths.style("opacity", function(pieData) {
+          return pieData.data.spending_category === category ? 1 : 0.3;
+        });
+        
+        // Highlight corresponding legend item
+        legendItems.style("font-weight", function(legendData) {
+          return legendData.spending_category === category ? "bold" : "normal";
+        });
+      })
+      .on("mouseout", function() {
+        // Reset all
+        paths.style("opacity", 1);
+        legendItems.style("font-weight", "normal");
+      });
 
   }, [data]);
 

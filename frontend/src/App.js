@@ -23,7 +23,7 @@ function App() {
     try {
       const [transactionsRes, categoriesRes] = await Promise.all([
         axios.get(`${API_BASE_URL}/transactions?period=${period}&year=${year}`),
-        axios.get(`${API_BASE_URL}/categories`)
+        axios.get(`${API_BASE_URL}/categories?period=${period}&year=${year}`)
       ]);
       
       setTransactions(transactionsRes.data.data);

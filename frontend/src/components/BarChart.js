@@ -21,7 +21,8 @@ const BarChart = ({ data, period }) => {
       .attr("transform", `translate(${margin.left},${margin.top})`);
 
     let aggregatedData;
-    if (period === 'ytd') {
+    if (period === 'monthly') {
+      // For monthly view, show spending by category
       aggregatedData = d3.rollup(
         data,
         v => d3.sum(v, d => d.amount),
@@ -32,6 +33,7 @@ const BarChart = ({ data, period }) => {
         amount: value
       }));
     } else {
+      // For quarterly and YTD views, show spending by time period
       aggregatedData = d3.rollup(
         data,
         v => d3.sum(v, d => d.amount),
@@ -44,7 +46,7 @@ const BarChart = ({ data, period }) => {
     }
 
     const xScale = d3.scaleBand()
-      .domain(aggregatedData.map(d => period === 'ytd' ? d.category : d.period))
+      .domain(aggregatedData.map(d => period === 'monthly' ? d.category : d.period))
       .range([0, width])
       .padding(0.1);
 
@@ -56,7 +58,7 @@ const BarChart = ({ data, period }) => {
       .data(aggregatedData)
       .enter().append("rect")
       .attr("class", "bar")
-      .attr("x", d => xScale(period === 'ytd' ? d.category : d.period))
+      .attr("x", d => xScale(period === 'monthly' ? d.category : d.period))
       .attr("width", xScale.bandwidth())
       .attr("y", d => yScale(d.amount))
       .attr("height", d => height - yScale(d.amount))

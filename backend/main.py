@@ -39,42 +39,63 @@ async def get_transactions(
     df_filtered = df[df['transaction_date'].dt.year == current_year]
     
     if period == "monthly":
-        grouped = df_filtered.groupby([
-            df_filtered['transaction_date'].dt.month,
-            'spending_category'
-        ])['amount'].sum().reset_index()
-        grouped['period'] = grouped['transaction_date'].apply(lambda x: f"{current_year}-{x:02d}")
+        # Get the latest month with data
+        latest_month = df_filtered['transaction_date'].dt.to_period('M').max()
+        df_period = df_filtered[df_filtered['transaction_date'].dt.to_period('M') == latest_month]
+        
+        grouped = df_period.groupby('spending_category')['amount'].sum().reset_index()
+        grouped['period'] = str(latest_month)
         
     elif period == "quarterly":
-        grouped = df_filtered.groupby([
-            df_filtered['transaction_date'].dt.quarter,
-            'spending_category'
-        ])['amount'].sum().reset_index()
-        grouped['period'] = grouped['transaction_date'].apply(lambda x: f"{current_year}-Q{x}")
+        # Get the latest quarter with data
+        latest_quarter = df_filtered['transaction_date'].dt.to_period('Q').max()
+        df_period = df_filtered[df_filtered['transaction_date'].dt.to_period('Q') == latest_quarter]
+        
+        grouped = df_period.groupby('spending_category')['amount'].sum().reset_index()
+        grouped['period'] = str(latest_quarter)
         
     elif period == "ytd":
-        grouped = df_filtered.groupby('spending_category')['amount'].sum().reset_index()
+        df_period = df_filtered
+        grouped = df_period.groupby('spending_category')['amount'].sum().reset_index()
         grouped['period'] = f"{current_year}-YTD"
     
     return {
         "data": grouped.to_dict('records'),
         "summary": {
-            "total_amount": float(df_filtered['amount'].sum()),
-            "transaction_count": len(df_filtered),
+            "total_amount": float(df_period['amount'].sum()),
+            "transaction_count": len(df_period),
             "period": period,
             "year": current_year
         }
     }
 
 @app.get("/categories")
-async def get_categories():
-    """Get spending categories summary"""
+async def get_categories(
+    period: Optional[str] = "monthly",
+    year: Optional[int] = None
+):
+    """Get spending categories summary for the specified period"""
     df = await get_transactions_data()
     
     if df.empty:
         return {"categories": []}
     
-    category_summary = df.groupby('spending_category').agg({
+    df['transaction_date'] = pd.to_datetime(df['transaction_date'])
+    
+    current_year = year or datetime.now().year
+    df_filtered = df[df['transaction_date'].dt.year == current_year]
+    
+    # Apply same period filtering as transactions endpoint
+    if period == "monthly":
+        latest_month = df_filtered['transaction_date'].dt.to_period('M').max()
+        df_period = df_filtered[df_filtered['transaction_date'].dt.to_period('M') == latest_month]
+    elif period == "quarterly":
+        latest_quarter = df_filtered['transaction_date'].dt.to_period('Q').max()
+        df_period = df_filtered[df_filtered['transaction_date'].dt.to_period('Q') == latest_quarter]
+    elif period == "ytd":
+        df_period = df_filtered
+    
+    category_summary = df_period.groupby('spending_category').agg({
         'amount': ['sum', 'count', 'mean']
     }).round(2)
     
