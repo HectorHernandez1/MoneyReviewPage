@@ -22,7 +22,8 @@ async def root():
 @app.get("/transactions")
 async def get_transactions(
     period: Optional[str] = "monthly",
-    year: Optional[int] = None
+    year: Optional[int] = None,
+    user: Optional[str] = None
 ):
     """
     Get transaction data aggregated by period
@@ -37,6 +38,10 @@ async def get_transactions(
     
     current_year = year or datetime.now().year
     df_filtered = df[df['transaction_date'].dt.year == current_year]
+    
+    # Apply user filter if specified
+    if user and user != "all":
+        df_filtered = df_filtered[df_filtered['person'].str.lower() == user.lower()]
     
     if period == "monthly":
         # Get the latest month with data
@@ -72,7 +77,8 @@ async def get_transactions(
 @app.get("/categories")
 async def get_categories(
     period: Optional[str] = "monthly",
-    year: Optional[int] = None
+    year: Optional[int] = None,
+    user: Optional[str] = None
 ):
     """Get spending categories summary for the specified period"""
     df = await get_transactions_data()
@@ -84,6 +90,10 @@ async def get_categories(
     
     current_year = year or datetime.now().year
     df_filtered = df[df['transaction_date'].dt.year == current_year]
+    
+    # Apply user filter if specified
+    if user and user != "all":
+        df_filtered = df_filtered[df_filtered['person'].str.lower() == user.lower()]
     
     # Apply same period filtering as transactions endpoint
     if period == "monthly":
@@ -103,6 +113,20 @@ async def get_categories(
     category_summary = category_summary.reset_index()
     
     return {"categories": category_summary.to_dict('records')}
+
+@app.get("/users")
+async def get_users():
+    """Get list of available users/persons"""
+    df = await get_transactions_data()
+    
+    if df.empty:
+        return {"users": []}
+    
+    users = df['person'].unique().tolist()
+    users = [user for user in users if user and str(user).strip()]  # Remove empty/null values
+    users.sort()
+    
+    return {"users": users}
 
 if __name__ == "__main__":
     import uvicorn

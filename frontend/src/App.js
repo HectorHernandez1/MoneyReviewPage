@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Dashboard from './components/Dashboard';
-import PeriodSelector from './components/PeriodSelector';
+import FilterPanel from './components/FilterPanel';
 import './App.css';
 
 const API_BASE_URL = 'http://localhost:8000';
@@ -11,19 +11,20 @@ function App() {
   const [categories, setCategories] = useState([]);
   const [period, setPeriod] = useState('monthly');
   const [year, setYear] = useState(new Date().getFullYear());
+  const [user, setUser] = useState('all');
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState({});
 
   useEffect(() => {
     fetchData();
-  }, [period, year]);
+  }, [period, year, user]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
       const [transactionsRes, categoriesRes] = await Promise.all([
-        axios.get(`${API_BASE_URL}/transactions?period=${period}&year=${year}`),
-        axios.get(`${API_BASE_URL}/categories?period=${period}&year=${year}`)
+        axios.get(`${API_BASE_URL}/transactions?period=${period}&year=${year}&user=${user}`),
+        axios.get(`${API_BASE_URL}/categories?period=${period}&year=${year}&user=${user}`)
       ]);
       
       setTransactions(transactionsRes.data.data);
@@ -39,25 +40,34 @@ function App() {
     <div className="App">
       <header className="App-header">
         <h1>Budget Dashboard</h1>
-        <PeriodSelector 
-          period={period}
-          year={year}
-          onPeriodChange={setPeriod}
-          onYearChange={setYear}
-        />
       </header>
       
       <main className="App-main">
-        {loading ? (
-          <div className="loading">Loading...</div>
-        ) : (
-          <Dashboard 
-            transactions={transactions}
-            categories={categories}
-            summary={summary}
-            period={period}
-          />
-        )}
+        <div className="app-layout">
+          <aside className="sidebar">
+            <FilterPanel 
+              period={period}
+              year={year}
+              user={user}
+              onPeriodChange={setPeriod}
+              onYearChange={setYear}
+              onUserChange={setUser}
+            />
+          </aside>
+          
+          <div className="content">
+            {loading ? (
+              <div className="loading">Loading...</div>
+            ) : (
+              <Dashboard 
+                transactions={transactions}
+                categories={categories}
+                summary={summary}
+                period={period}
+              />
+            )}
+          </div>
+        </div>
       </main>
     </div>
   );
