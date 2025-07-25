@@ -1,14 +1,17 @@
 .App {
   text-align: center;
-  background-color: #f7fafc;
+  background-color: #0f1419;
+  background: linear-gradient(135deg, #0f1419 0%, #1a202c 100%);
   min-height: 100vh;
+  color: #e2e8f0;
 }
 
 .App-header {
-  background-color: #2d3748;
+  background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
   padding: 20px;
-  color: white;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  color: #f7fafc;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  border-bottom: 1px solid #374151;
 }
 
 .App-header h1 {
@@ -35,9 +38,10 @@
 
 .selector-group select {
   padding: 8px 12px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #4a5568;
   border-radius: 4px;
-  background: white;
+  background: #2d3748;
+  color: #e2e8f0;
   font-size: 14px;
 }
 
@@ -69,7 +73,7 @@
   align-items: center;
   height: 200px;
   font-size: 1.2rem;
-  color: #4a5568;
+  color: #a0aec0;
 }
 
 .dashboard {
@@ -86,16 +90,23 @@
 }
 
 .summary-card {
-  background: white;
+  background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
   padding: 24px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  border-left: 4px solid #4299e1;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  border: 1px solid #374151;
+  border-left: 4px solid #60a5fa;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.summary-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.4);
 }
 
 .summary-card h3 {
   margin: 0 0 12px 0;
-  color: #4a5568;
+  color: #9ca3af;
   font-size: 0.9rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -104,19 +115,21 @@
 .summary-card .amount {
   font-size: 2rem;
   font-weight: bold;
-  color: #2d3748;
+  color: #f3f4f6;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
 .summary-card .count {
   font-size: 2rem;
   font-weight: bold;
-  color: #4299e1;
+  color: #60a5fa;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
 .summary-card .period {
   font-size: 1.1rem;
   font-weight: 500;
-  color: #4a5568;
+  color: #9ca3af;
   text-transform: capitalize;
 }
 
@@ -127,34 +140,48 @@
 }
 
 .chart-section {
-  background: white;
+  background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
   padding: 24px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  border: 1px solid #374151;
   overflow: visible;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.chart-section:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.4);
 }
 
 .chart-section h2 {
   margin: 0 0 20px 0;
-  color: #2d3748;
+  color: #f3f4f6;
   font-size: 1.3rem;
 }
 
 /* Filter Panel Styles */
 .filter-panel {
-  background: white;
+  background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
   padding: 24px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  border: 1px solid #374151;
   position: sticky;
   top: 20px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.filter-panel:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.4);
 }
 
 .filter-panel h3 {
   margin: 0 0 20px 0;
-  color: #2d3748;
+  color: #f3f4f6;
   font-size: 1.2rem;
-  border-bottom: 2px solid #e2e8f0;
+  border-bottom: 2px solid #4a5568;
   padding-bottom: 10px;
 }
 
@@ -165,7 +192,7 @@
 .filter-group label {
   display: block;
   margin-bottom: 8px;
-  color: #4a5568;
+  color: #d1d5db;
   font-weight: 500;
   font-size: 0.9rem;
 }
@@ -173,23 +200,24 @@
 .filter-group select {
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #e2e8f0;
-  border-radius: 4px;
-  background: white;
+  border: 1px solid #4a5568;
+  border-radius: 6px;
+  background: #374151;
   font-size: 14px;
-  color: #2d3748;
-  transition: border-color 0.2s;
+  color: #e5e7eb;
+  transition: all 0.2s;
 }
 
 .filter-group select:focus {
   outline: none;
-  border-color: #4299e1;
-  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
+  background: #4b5563;
 }
 
 .filter-group select:disabled {
-  background-color: #f7fafc;
-  color: #a0aec0;
+  background-color: #1f2937;
+  color: #6b7280;
   cursor: not-allowed;
 }
 

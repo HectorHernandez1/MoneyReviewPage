@@ -62,7 +62,9 @@ const BarChart = ({ data, period }) => {
       .attr("width", xScale.bandwidth())
       .attr("y", d => yScale(d.amount))
       .attr("height", d => height - yScale(d.amount))
-      .attr("fill", "#4299e1");
+      .attr("fill", "#60a5fa")
+      .attr("stroke", "#3b82f6")
+      .attr("stroke-width", 1);
 
     g.append("g")
       .attr("class", "x-axis")
@@ -70,13 +72,26 @@ const BarChart = ({ data, period }) => {
       .call(d3.axisBottom(xScale))
       .selectAll("text")
       .style("text-anchor", "end")
+      .style("fill", "#d1d5db")
+      .style("font-size", "12px")
       .attr("dx", "-.8em")
       .attr("dy", ".15em")
       .attr("transform", "rotate(-45)");
 
+    g.select(".x-axis")
+      .selectAll(".domain, .tick line")
+      .style("stroke", "#4a5568");
+
     g.append("g")
       .attr("class", "y-axis")
-      .call(d3.axisLeft(yScale).tickFormat(d => `$${d3.format(",.0f")(d)}`));
+      .call(d3.axisLeft(yScale).tickFormat(d => `$${d3.format(",.0f")(d)}`))
+      .selectAll("text")
+      .style("fill", "#d1d5db")
+      .style("font-size", "12px");
+
+    g.select(".y-axis")
+      .selectAll(".domain, .tick line")
+      .style("stroke", "#4a5568");
 
   }, [data, period]);
 

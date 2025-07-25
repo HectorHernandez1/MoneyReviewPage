@@ -5,7 +5,8 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f7fafc;
+  background-color: #0f1419;
+  color: #e2e8f0;
 }
 
 code {
@@ -18,17 +19,39 @@ code {
 }
 
 .bar {
-  transition: opacity 0.2s;
+  transition: all 0.2s;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
 }
 
 .bar:hover {
   opacity: 0.8;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.4));
 }
 
 .arc path {
-  transition: opacity 0.2s;
+  transition: all 0.2s;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
 }
 
 .arc path:hover {
   opacity: 0.8;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.4));
+}
+
+/* Dark theme scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1a202c;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #4a5568;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #60a5fa;
 }

@@ -22,7 +22,7 @@ const PieChart = ({ data }) => {
       .append("g")
       .attr("transform", `translate(${chartWidth / 2},${height / 2})`);
 
-    const color = d3.scaleOrdinal(d3.schemeCategory10);
+    const color = d3.scaleOrdinal(['#60a5fa', '#34d399', '#fbbf24', '#f87171', '#a78bfa', '#fb7185', '#4ade80', '#38bdf8', '#fcd34d', '#f472b6']);
 
     const pie = d3.pie()
       .value(d => d.total_amount)
@@ -44,9 +44,10 @@ const PieChart = ({ data }) => {
     const paths = arcs.append("path")
       .attr("d", path)
       .attr("fill", (d, i) => color(i))
-      .attr("stroke", "white")
-      .attr("stroke-width", 2)
-      .style("cursor", "pointer");
+      .attr("stroke", "#1a202c")
+      .attr("stroke-width", 3)
+      .style("cursor", "pointer")
+      .style("filter", "drop-shadow(0 2px 4px rgba(0,0,0,0.3))");
 
     const percentageLabels = arcs.append("text")
       .attr("transform", d => `translate(${labelArc.centroid(d)})`)
@@ -81,11 +82,12 @@ const PieChart = ({ data }) => {
       .attr("y", 9)
       .attr("dy", "0.35em")
       .style("font-size", "12px")
+      .style("fill", "#e5e7eb")
       .text(d => d.spending_category);
 
     // Add hover interactions
     legendItems
-      .on("mouseover", function(event, d) {
+      .on("mouseover", function(_, d) {
         const category = d.spending_category;
         
         // Highlight corresponding pie slice
@@ -112,7 +114,7 @@ const PieChart = ({ data }) => {
 
     // Add hover to pie slices as well
     paths
-      .on("mouseover", function(event, d) {
+      .on("mouseover", function(_, d) {
         const category = d.data.spending_category;
         
         // Highlight this slice
