@@ -126,6 +126,57 @@ async def get_categories(
     
     return {"categories": category_summary.to_dict('records')}
 
+@app.get("/raw-transactions")
+async def get_raw_transactions(
+    period: Optional[str] = "monthly",
+    year: Optional[int] = None,
+    user: Optional[str] = None
+):
+    """
+    Get raw transaction data for line chart
+    """
+    df = await get_transactions_data()
+    
+    if df.empty:
+        return {"data": []}
+    
+    df['transaction_date'] = pd.to_datetime(df['transaction_date'])
+    
+    current_year = year or datetime.now().year
+    df_filtered = df[df['transaction_date'].dt.year == current_year]
+    
+    # Apply user filter if specified
+    if user and user != "all":
+        df_filtered = df_filtered[df_filtered['person'].str.lower() == user.lower()]
+    
+    # Filter by period
+    if period == "monthly":
+        # Include current month and previous month
+        current_month = pd.Period.now('M')
+        previous_month = current_month - 1
+        
+        df_period = df_filtered[
+            (df_filtered['transaction_date'].dt.to_period('M') == current_month) |
+            (df_filtered['transaction_date'].dt.to_period('M') == previous_month)
+        ]
+        
+    elif period == "quarterly":
+        # Get the current quarter
+        current_quarter = pd.Period.now('Q')
+        df_period = df_filtered[df_filtered['transaction_date'].dt.to_period('Q') == current_quarter]
+        
+    elif period == "ytd":
+        df_period = df_filtered
+    
+    # Convert to records and return raw transaction data
+    transactions = df_period[['amount', 'spending_category', 'transaction_date']].to_dict('records')
+    
+    # Convert datetime to string for JSON serialization
+    for transaction in transactions:
+        transaction['transaction_date'] = transaction['transaction_date'].strftime('%Y-%m-%d')
+    
+    return {"data": transactions}
+
 @app.get("/users")
 async def get_users():
     """Get list of available users/persons"""

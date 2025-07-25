@@ -8,6 +8,7 @@ const API_BASE_URL = 'http://localhost:8000';
 
 function App() {
   const [transactions, setTransactions] = useState([]);
+  const [rawTransactions, setRawTransactions] = useState([]);
   const [categories, setCategories] = useState([]);
   const [period, setPeriod] = useState('monthly');
   const [year, setYear] = useState(new Date().getFullYear());
@@ -22,14 +23,16 @@ function App() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [transactionsRes, categoriesRes] = await Promise.all([
+      const [transactionsRes, categoriesRes, rawTransactionsRes] = await Promise.all([
         axios.get(`${API_BASE_URL}/transactions?period=${period}&year=${year}&user=${user}`),
-        axios.get(`${API_BASE_URL}/categories?period=${period}&year=${year}&user=${user}`)
+        axios.get(`${API_BASE_URL}/categories?period=${period}&year=${year}&user=${user}`),
+        axios.get(`${API_BASE_URL}/raw-transactions?period=${period}&year=${year}&user=${user}`)
       ]);
       
       setTransactions(transactionsRes.data.data);
       setSummary(transactionsRes.data.summary);
       setCategories(categoriesRes.data.categories);
+      setRawTransactions(rawTransactionsRes.data.data);
     } catch (error) {
       console.error('Error fetching data:', error);
     }
@@ -62,6 +65,7 @@ function App() {
             ) : (
               <Dashboard 
                 transactions={transactions}
+                rawTransactions={rawTransactions}
                 categories={categories}
                 summary={summary}
                 period={period}
