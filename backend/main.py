@@ -44,12 +44,21 @@ async def get_transactions(
         df_filtered = df_filtered[df_filtered['person'].str.lower() == user.lower()]
     
     if period == "monthly":
-        # Get the latest month with data
-        latest_month = df_filtered['transaction_date'].dt.to_period('M').max()
-        df_period = df_filtered[df_filtered['transaction_date'].dt.to_period('M') == latest_month]
+        # Include current month and previous month
+        current_month = pd.Period.now('M')
+        previous_month = current_month - 1
+        
+        # Filter for both current and previous month
+        df_period = df_filtered[
+            (df_filtered['transaction_date'].dt.to_period('M') == current_month) |
+            (df_filtered['transaction_date'].dt.to_period('M') == previous_month)
+        ]
+        
+        # Create period info showing both months
+        current_period_info = f"{previous_month}/{current_month}"
         
         grouped = df_period.groupby('spending_category')['amount'].sum().reset_index()
-        grouped['period'] = str(latest_month)
+        grouped['period'] = current_period_info
         
     elif period == "quarterly":
         # Get the latest quarter with data
@@ -58,11 +67,13 @@ async def get_transactions(
         
         grouped = df_period.groupby('spending_category')['amount'].sum().reset_index()
         grouped['period'] = str(latest_quarter)
+        current_period_info = str(latest_quarter)
         
     elif period == "ytd":
         df_period = df_filtered
         grouped = df_period.groupby('spending_category')['amount'].sum().reset_index()
         grouped['period'] = f"{current_year}-YTD"
+        current_period_info = f"{current_year}-YTD"
     
     return {
         "data": grouped.to_dict('records'),
@@ -70,7 +81,8 @@ async def get_transactions(
             "total_amount": float(df_period['amount'].sum()),
             "transaction_count": len(df_period),
             "period": period,
-            "year": current_year
+            "year": current_year,
+            "current_period": current_period_info
         }
     }
 

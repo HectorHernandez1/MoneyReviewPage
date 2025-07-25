@@ -3,7 +3,7 @@ import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:8000';
 
-const FilterPanel = ({ period, year, user, onPeriodChange, onYearChange, onUserChange }) => {
+const FilterPanel = ({ period, year, user, summary, onPeriodChange, onYearChange, onUserChange }) => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -30,6 +30,27 @@ const FilterPanel = ({ period, year, user, onPeriodChange, onYearChange, onUserC
   };
 
   const hasChanges = pendingPeriod !== period || pendingYear !== year || pendingUser !== user;
+
+  const getMonthlyLabel = () => {
+    // Show actual months when data is loaded and period is monthly
+    if (summary && summary.current_period && summary.current_period.includes('/')) {
+      // Format is "2025-06/2025-07" for previous/current month
+      const [prevPeriod, currPeriod] = summary.current_period.split('/');
+      
+      const formatMonth = (period) => {
+        const [year, month] = period.split('-');
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                           'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return monthNames[parseInt(month) - 1];
+      };
+      
+      const prevMonth = formatMonth(prevPeriod);
+      const currMonth = formatMonth(currPeriod);
+      
+      return `Monthly (${prevMonth} & ${currMonth})`;
+    }
+    return 'Monthly';
+  };
 
   const fetchUsers = async () => {
     try {
@@ -74,7 +95,7 @@ const FilterPanel = ({ period, year, user, onPeriodChange, onYearChange, onUserC
           value={pendingPeriod} 
           onChange={(e) => setPendingPeriod(e.target.value)}
         >
-          <option value="monthly">Monthly</option>
+          <option value="monthly">{getMonthlyLabel()}</option>
           <option value="quarterly">Quarterly</option>
           <option value="ytd">Year to Date</option>
         </select>

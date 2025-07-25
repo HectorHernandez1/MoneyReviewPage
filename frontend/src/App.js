@@ -49,6 +49,7 @@ function App() {
               period={period}
               year={year}
               user={user}
+              summary={summary}
               onPeriodChange={setPeriod}
               onYearChange={setYear}
               onUserChange={setUser}
