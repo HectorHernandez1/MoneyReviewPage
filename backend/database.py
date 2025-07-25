@@ -28,7 +28,7 @@ async def get_transactions_data():
         transaction_date,
         account_type
     FROM budget_app.transactions_view
-    where spending_category NOT IN ( 'Installment')
+    where spending_category NOT IN ( 'Installment','Payments','Refunds & Returns')
     ORDER BY transaction_date DESC;
     """
     
