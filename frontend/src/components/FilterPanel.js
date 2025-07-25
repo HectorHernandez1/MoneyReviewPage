@@ -6,10 +6,30 @@ const API_BASE_URL = 'http://localhost:8000';
 const FilterPanel = ({ period, year, user, onPeriodChange, onYearChange, onUserChange }) => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Local state for pending filter changes
+  const [pendingPeriod, setPendingPeriod] = useState(period);
+  const [pendingYear, setPendingYear] = useState(year);
+  const [pendingUser, setPendingUser] = useState(user);
 
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  // Update local state when props change
+  useEffect(() => {
+    setPendingPeriod(period);
+    setPendingYear(year);
+    setPendingUser(user);
+  }, [period, year, user]);
+
+  const handleApplyFilters = () => {
+    onPeriodChange(pendingPeriod);
+    onYearChange(pendingYear);
+    onUserChange(pendingUser);
+  };
+
+  const hasChanges = pendingPeriod !== period || pendingYear !== year || pendingUser !== user;
 
   const fetchUsers = async () => {
     try {
@@ -34,8 +54,8 @@ const FilterPanel = ({ period, year, user, onPeriodChange, onYearChange, onUserC
         <label htmlFor="user-select">User</label>
         <select 
           id="user-select"
-          value={user} 
-          onChange={(e) => onUserChange(e.target.value)}
+          value={pendingUser} 
+          onChange={(e) => setPendingUser(e.target.value)}
           disabled={loading}
         >
           <option value="all">All Users</option>
@@ -51,8 +71,8 @@ const FilterPanel = ({ period, year, user, onPeriodChange, onYearChange, onUserC
         <label htmlFor="period-select">Time Frame</label>
         <select 
           id="period-select"
-          value={period} 
-          onChange={(e) => onPeriodChange(e.target.value)}
+          value={pendingPeriod} 
+          onChange={(e) => setPendingPeriod(e.target.value)}
         >
           <option value="monthly">Monthly</option>
           <option value="quarterly">Quarterly</option>
@@ -64,13 +84,23 @@ const FilterPanel = ({ period, year, user, onPeriodChange, onYearChange, onUserC
         <label htmlFor="year-select">Year</label>
         <select 
           id="year-select"
-          value={year} 
-          onChange={(e) => onYearChange(parseInt(e.target.value))}
+          value={pendingYear} 
+          onChange={(e) => setPendingYear(parseInt(e.target.value))}
         >
           {years.map(y => (
             <option key={y} value={y}>{y}</option>
           ))}
         </select>
+      </div>
+
+      <div className="filter-group">
+        <button 
+          className={`apply-button ${hasChanges ? 'has-changes' : ''}`}
+          onClick={handleApplyFilters}
+          disabled={!hasChanges}
+        >
+          Apply Filters
+        </button>
       </div>
     </div>
   );
