@@ -41,6 +41,21 @@ async def get_transactions_data():
         print(f"Database error: {e}")
         return pd.DataFrame()
 
+async def get_users_data():
+    """
+    Fetch distinct users from the transactions_view
+    """
+    query = "SELECT DISTINCT person FROM budget_app.transactions_view WHERE person IS NOT NULL ORDER BY person;"
+    
+    try:
+        conn = psycopg2.connect(**DB_CONFIG)
+        df = pd.read_sql(query, conn)
+        conn.close()
+        return df['person'].tolist()
+    except Exception as e:
+        print(f"Database error: {e}")
+        return []
+
 def test_connection():
     """Test database connection"""
     try:

@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from database import get_transactions_data
+from database import get_transactions_data, get_users_data
 import pandas as pd
 from datetime import datetime
 from typing import Optional
@@ -117,14 +117,10 @@ async def get_categories(
 @app.get("/users")
 async def get_users():
     """Get list of available users/persons"""
-    df = await get_transactions_data()
+    users = await get_users_data()
     
-    if df.empty:
-        return {"users": []}
-    
-    users = df['person'].unique().tolist()
-    users = [user for user in users if user and str(user).strip()]  # Remove empty/null values
-    users.sort()
+    # Filter out empty values and sort
+    users = [user for user in users if user and str(user).strip()]
     
     return {"users": users}
 
