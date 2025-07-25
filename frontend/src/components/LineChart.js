@@ -111,11 +111,10 @@ const LineChart = ({ data, period }) => {
         .domain([0, d3.max(processedData, d => d.amount)])
         .range([height, 0]);
 
-      // Create line generator
+      // Create line generator - straight lines, no smoothing
       const line = d3.line()
         .x(d => xScale(d.date))
-        .y(d => yScale(d.amount))
-        .curve(d3.curveMonotoneX);
+        .y(d => yScale(d.amount));
 
       // Add the line
       g.append("path")
@@ -141,15 +140,31 @@ const LineChart = ({ data, period }) => {
         .style("filter", "drop-shadow(0 2px 4px rgba(0,0,0,0.3))")
         .style("cursor", "pointer");
 
-      // Add x-axis
-      const xAxisFormat = period === 'monthly' ? d3.timeFormat("%m/%d") : 
-                         period === 'quarterly' ? d3.timeFormat("%b") : 
-                         d3.timeFormat("Q%q");
+      // Add x-axis with better formatting and fewer ticks
+      let xAxisFormat, tickCount;
+      
+      if (period === 'monthly') {
+        xAxisFormat = d3.timeFormat("%m/%d");
+        tickCount = Math.min(processedData.length, 10); // Limit to 10 ticks max
+      } else if (period === 'quarterly') {
+        xAxisFormat = d3.timeFormat("%b %Y");
+        tickCount = Math.min(processedData.length, 6); // Limit to 6 months max
+      } else {
+        // For yearly, use custom formatting to show Q1, Q2, etc.
+        xAxisFormat = (d) => {
+          const quarter = Math.floor(d.getMonth() / 3) + 1;
+          return `Q${quarter} ${d.getFullYear()}`;
+        };
+        tickCount = processedData.length; // Show all quarters
+      }
 
       g.append("g")
         .attr("class", "x-axis")
         .attr("transform", `translate(0,${height})`)
-        .call(d3.axisBottom(xScale).tickFormat(xAxisFormat))
+        .call(d3.axisBottom(xScale)
+          .tickFormat(xAxisFormat)
+          .ticks(tickCount)
+        )
         .selectAll("text")
         .style("fill", "#d1d5db")
         .style("font-size", "12px")
@@ -159,10 +174,13 @@ const LineChart = ({ data, period }) => {
         .selectAll(".domain, .tick line")
         .style("stroke", "#4a5568");
 
-      // Add y-axis
+      // Add y-axis with better tick spacing
       g.append("g")
         .attr("class", "y-axis")
-        .call(d3.axisLeft(yScale).tickFormat(d => `$${d3.format(",.0f")(d)}`))
+        .call(d3.axisLeft(yScale)
+          .tickFormat(d => `$${d3.format(",.0f")(d)}`)
+          .ticks(6) // Limit to 6 ticks on y-axis
+        )
         .selectAll("text")
         .style("fill", "#d1d5db")
         .style("font-size", "12px");
