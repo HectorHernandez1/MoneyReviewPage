@@ -107,6 +107,37 @@ const LineChart = ({ data, period }) => {
         .domain([0, d3.max(processedData, d => d.amount)])
         .range([height, 0]);
 
+      // Add grid lines
+      // Horizontal grid lines
+      g.selectAll("line.horizontal-grid")
+        .data(yScale.ticks(6))
+        .enter()
+        .append("line")
+        .attr("class", "horizontal-grid")
+        .attr("x1", 0)
+        .attr("x2", width)
+        .attr("y1", d => yScale(d))
+        .attr("y2", d => yScale(d))
+        .style("stroke", "#374151")
+        .style("stroke-width", 1)
+        .style("stroke-dasharray", "3,3")
+        .style("opacity", 0.6);
+
+      // Vertical grid lines
+      g.selectAll("line.vertical-grid")
+        .data(xScale.ticks(period === 'monthly' ? 5 : period === 'quarterly' ? 4 : 4))
+        .enter()
+        .append("line")
+        .attr("class", "vertical-grid")
+        .attr("x1", d => xScale(d))
+        .attr("x2", d => xScale(d))
+        .attr("y1", 0)
+        .attr("y2", height)
+        .style("stroke", "#374151")
+        .style("stroke-width", 1)
+        .style("stroke-dasharray", "3,3")
+        .style("opacity", 0.6);
+
       // Create line generator - straight lines, no smoothing
       const line = d3.line()
         .x(d => xScale(d.date))
