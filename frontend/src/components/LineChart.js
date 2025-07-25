@@ -4,20 +4,25 @@ import * as d3 from 'd3';
 const LineChart = ({ data, period }) => {
   const svgRef = useRef();
 
-  useEffect(() => {
+  const renderChart = () => {
     if (!data || data.length === 0) return;
 
     try {
       const svg = d3.select(svgRef.current);
       svg.selectAll("*").remove();
 
+      // Get the container dimensions dynamically
+      const container = svgRef.current.parentNode;
+      const containerWidth = container.getBoundingClientRect().width;
+      
       const margin = { top: 20, right: 30, bottom: 80, left: 60 };
-      const width = 800 - margin.left - margin.right;
+      const width = containerWidth - margin.left - margin.right;
       const height = 300 - margin.top - margin.bottom;
 
       const g = svg
-        .attr("width", width + margin.left + margin.right)
+        .attr("width", "100%")
         .attr("height", height + margin.top + margin.bottom)
+        .attr("viewBox", `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
         .append("g")
         .attr("transform", `translate(${margin.left},${margin.top})`);
 
@@ -220,10 +225,24 @@ const LineChart = ({ data, period }) => {
       console.error('Error rendering LineChart:', error);
       // Don't break the app, just log the error
     }
+  };
 
+  useEffect(() => {
+    renderChart();
+    
+    // Add resize listener
+    const handleResize = () => {
+      renderChart();
+    };
+    
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
   }, [data, period]);
 
-  return <svg ref={svgRef}></svg>;
+  return <svg ref={svgRef} style={{ width: '100%', height: 'auto' }}></svg>;
 };
 
 export default LineChart;
