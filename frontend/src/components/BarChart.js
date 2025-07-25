@@ -20,45 +20,31 @@ const BarChart = ({ data, period }) => {
       .append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);
 
-    let aggregatedData;
-    if (period === 'monthly') {
-      // For monthly view, show spending by category
-      aggregatedData = d3.rollup(
-        data,
-        v => d3.sum(v, d => d.amount),
-        d => d.spending_category
-      );
-      aggregatedData = Array.from(aggregatedData, ([key, value]) => ({
-        category: key,
-        amount: value
-      }));
-    } else {
-      // For quarterly and YTD views, show spending by time period
-      aggregatedData = d3.rollup(
-        data,
-        v => d3.sum(v, d => d.amount),
-        d => d.period
-      );
-      aggregatedData = Array.from(aggregatedData, ([key, value]) => ({
-        period: key,
-        amount: value
-      }));
-    }
+    // Always show spending by category regardless of time frame
+    const aggregatedData = d3.rollup(
+      data,
+      v => d3.sum(v, d => d.amount),
+      d => d.spending_category
+    );
+    const categoryData = Array.from(aggregatedData, ([key, value]) => ({
+      category: key,
+      amount: value
+    }));
 
     const xScale = d3.scaleBand()
-      .domain(aggregatedData.map(d => period === 'monthly' ? d.category : d.period))
+      .domain(categoryData.map(d => d.category))
       .range([0, width])
       .padding(0.1);
 
     const yScale = d3.scaleLinear()
-      .domain([0, d3.max(aggregatedData, d => d.amount)])
+      .domain([0, d3.max(categoryData, d => d.amount)])
       .range([height, 0]);
 
     g.selectAll(".bar")
-      .data(aggregatedData)
+      .data(categoryData)
       .enter().append("rect")
       .attr("class", "bar")
-      .attr("x", d => xScale(period === 'monthly' ? d.category : d.period))
+      .attr("x", d => xScale(d.category))
       .attr("width", xScale.bandwidth())
       .attr("y", d => yScale(d.amount))
       .attr("height", d => height - yScale(d.amount))
