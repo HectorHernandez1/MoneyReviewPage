@@ -161,9 +161,8 @@ async def get_raw_transactions(
         ]
         
     elif period == "quarterly":
-        # Get the current quarter
-        current_quarter = pd.Period.now('Q')
-        df_period = df_filtered[df_filtered['transaction_date'].dt.to_period('Q') == current_quarter]
+        # For quarterly view in line chart, show all months in the year
+        df_period = df_filtered
         
     elif period == "ytd":
         df_period = df_filtered

@@ -5,11 +5,7 @@ const LineChart = ({ data, period }) => {
   const svgRef = useRef();
 
   useEffect(() => {
-    console.log('LineChart received data:', data);
-    if (!data || data.length === 0) {
-      console.log('No data for LineChart');
-      return;
-    }
+    if (!data || data.length === 0) return;
 
     try {
       const svg = d3.select(svgRef.current);
