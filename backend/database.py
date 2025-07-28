@@ -15,11 +15,28 @@ DB_CONFIG = {
     "options": "-c search_path=budget_app"
 }
 
-async def get_transactions_data():
+async def get_transactions_data(
+    user=None, 
+    period=None, 
+    year=None, 
+    month=None, 
+    quarter=None
+):
     """
-    Fetch data from the transactions_view
+    Fetch filtered data from the transactions_view
+    
+    Args:
+        user: Filter by specific user/person (None for all users)
+        period: 'monthly', 'quarterly', 'ytd', or 'yearly'
+        year: Specific year (for ytd or yearly periods)
+        month: Specific month in YYYY-MM format (for monthly period)
+        quarter: Specific quarter in YYYY-QN format (for quarterly period)
+    
+    Default behavior: Returns current month data if no parameters provided
     """
-    query = """
+    
+    # Base query
+    base_query = """
     SELECT 
         amount,
         merchant_name,
@@ -28,17 +45,62 @@ async def get_transactions_data():
         transaction_date,
         account_type
     FROM budget_app.transactions_view
-    where spending_category NOT IN ( 'Installment','Payments','Refunds & Returns')
-    ORDER BY transaction_date DESC;
+    WHERE spending_category NOT IN ('Installment','Payments','Refunds & Returns')
     """
+    
+    # Build WHERE conditions
+    conditions = []
+    params = []
+    
+    # User filter
+    if user and user.lower() != 'all':
+        conditions.append("LOWER(person) = %s")
+        params.append(user.lower())
+    
+    # Period filters - default to current month if nothing specified
+    if period == 'monthly' and month:
+        # Parse YYYY-MM format
+        year_val, month_val = month.split('-')
+        conditions.append("EXTRACT(YEAR FROM transaction_date) = %s AND EXTRACT(MONTH FROM transaction_date) = %s")
+        params.extend([int(year_val), int(month_val)])
+        
+    elif period == 'quarterly' and quarter:
+        # Parse YYYY-QN format
+        year_val, quarter_val = quarter.split('-Q')
+        conditions.append("EXTRACT(YEAR FROM transaction_date) = %s AND EXTRACT(QUARTER FROM transaction_date) = %s")
+        params.extend([int(year_val), int(quarter_val)])
+        
+    elif period == 'ytd' and year:
+        conditions.append("EXTRACT(YEAR FROM transaction_date) = %s")
+        params.append(int(year))
+        
+    elif period == 'yearly' and year:
+        conditions.append("EXTRACT(YEAR FROM transaction_date) = %s")
+        params.append(int(year))
+        
+    else:
+        # Default: current month only
+        from datetime import datetime
+        current_date = datetime.now()
+        conditions.append("EXTRACT(YEAR FROM transaction_date) = %s AND EXTRACT(MONTH FROM transaction_date) = %s")
+        params.extend([current_date.year, current_date.month])
+    
+    # Combine conditions
+    if conditions:
+        base_query += " AND " + " AND ".join(conditions)
+    
+    # Add ordering
+    base_query += " ORDER BY transaction_date DESC"
     
     try:
         conn = psycopg2.connect(**DB_CONFIG)
-        df = pd.read_sql(query, conn)
+        df = pd.read_sql(base_query, conn, params=params)
         conn.close()
         return df
     except Exception as e:
         print(f"Database error: {e}")
+        print(f"Query: {base_query}")
+        print(f"Params: {params}")
         return pd.DataFrame()
 
 async def get_users_data():

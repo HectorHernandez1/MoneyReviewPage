@@ -33,56 +33,43 @@ async def get_transactions(
     month: 'YYYY-MM' format for specific month
     quarter: 'YYYY-QN' format for specific quarter
     """
-    df = await get_transactions_data()
+    # Get filtered data directly from database
+    df = await get_transactions_data(
+        user=user,
+        period=period,
+        year=year,
+        month=month,
+        quarter=quarter
+    )
     
     if df.empty:
         return {"data": [], "summary": {}}
     
     df['transaction_date'] = pd.to_datetime(df['transaction_date'])
     
-    # Apply user filter if specified
-    if user and user != "all":
-        df = df[df['person'].str.lower() == user.lower()]
-    
+    # Generate period info for display
     if period == "monthly" and month:
-        # Parse month parameter (YYYY-MM)
-        year_val, month_val = map(int, month.split('-'))
-        df_period = df[
-            (df['transaction_date'].dt.year == year_val) &
-            (df['transaction_date'].dt.month == month_val)
-        ]
-        current_period_info = pd.to_datetime(f"{year_val}-{month_val:02d}-01").strftime("%B %Y")
-        
+        year_val, month_val = month.split('-')
+        current_period_info = pd.to_datetime(f"{year_val}-{month_val}-01").strftime("%B %Y")
     elif period == "quarterly" and quarter:
-        # Parse quarter parameter (YYYY-QN)
         year_val, quarter_val = quarter.split('-Q')
-        year_val = int(year_val)
-        quarter_val = int(quarter_val)
-        df_period = df[
-            (df['transaction_date'].dt.year == year_val) &
-            (df['transaction_date'].dt.quarter == quarter_val)
-        ]
         current_period_info = f"Q{quarter_val} {year_val}"
-        
     elif period == "ytd":
         current_year = year or datetime.now().year
-        df_period = df[df['transaction_date'].dt.year == current_year]
         current_period_info = f"{current_year}-YTD"
-        
     else:
-        # Default fallback - current year
-        current_year = year or datetime.now().year
-        df_period = df[df['transaction_date'].dt.year == current_year]
-        current_period_info = f"{current_year}"
+        # Default: current month
+        current_period_info = datetime.now().strftime("%B %Y")
     
-    grouped = df_period.groupby('spending_category')['amount'].sum().reset_index()
+    # Group by spending category
+    grouped = df.groupby('spending_category')['amount'].sum().reset_index()
     grouped['period'] = current_period_info
     
     return {
         "data": grouped.to_dict('records'),
         "summary": {
-            "total_amount": float(df_period['amount'].sum()),
-            "transaction_count": len(df_period),
+            "total_amount": float(df['amount'].sum()),
+            "transaction_count": len(df),
             "period": period,
             "current_period": current_period_info
         }
@@ -97,40 +84,20 @@ async def get_categories(
     user: Optional[str] = None
 ):
     """Get spending categories summary for the specified period"""
-    df = await get_transactions_data()
+    # Get filtered data directly from database
+    df = await get_transactions_data(
+        user=user,
+        period=period,
+        year=year,
+        month=month,
+        quarter=quarter
+    )
     
     if df.empty:
         return {"categories": []}
     
-    df['transaction_date'] = pd.to_datetime(df['transaction_date'])
-    
-    # Apply user filter if specified
-    if user and user != "all":
-        df = df[df['person'].str.lower() == user.lower()]
-    
-    # Apply same period filtering as transactions endpoint
-    if period == "monthly" and month:
-        year_val, month_val = map(int, month.split('-'))
-        df_period = df[
-            (df['transaction_date'].dt.year == year_val) &
-            (df['transaction_date'].dt.month == month_val)
-        ]
-    elif period == "quarterly" and quarter:
-        year_val, quarter_val = quarter.split('-Q')
-        year_val = int(year_val)
-        quarter_val = int(quarter_val)
-        df_period = df[
-            (df['transaction_date'].dt.year == year_val) &
-            (df['transaction_date'].dt.quarter == quarter_val)
-        ]
-    elif period == "ytd":
-        current_year = year or datetime.now().year
-        df_period = df[df['transaction_date'].dt.year == current_year]
-    else:
-        current_year = year or datetime.now().year
-        df_period = df[df['transaction_date'].dt.year == current_year]
-    
-    category_summary = df_period.groupby('spending_category').agg({
+    # Generate category summary statistics
+    category_summary = df.groupby('spending_category').agg({
         'amount': ['sum', 'count', 'mean']
     }).round(2)
     
@@ -150,41 +117,22 @@ async def get_raw_transactions(
     """
     Get raw transaction data for line chart
     """
-    df = await get_transactions_data()
+    # Get filtered data directly from database
+    df = await get_transactions_data(
+        user=user,
+        period=period,
+        year=year,
+        month=month,
+        quarter=quarter
+    )
     
     if df.empty:
         return {"data": []}
     
     df['transaction_date'] = pd.to_datetime(df['transaction_date'])
     
-    # Apply user filter if specified
-    if user and user != "all":
-        df = df[df['person'].str.lower() == user.lower()]
-    
-    # Apply same period filtering as transactions endpoint
-    if period == "monthly" and month:
-        year_val, month_val = map(int, month.split('-'))
-        df_period = df[
-            (df['transaction_date'].dt.year == year_val) &
-            (df['transaction_date'].dt.month == month_val)
-        ]
-    elif period == "quarterly" and quarter:
-        year_val, quarter_val = quarter.split('-Q')
-        year_val = int(year_val)
-        quarter_val = int(quarter_val)
-        df_period = df[
-            (df['transaction_date'].dt.year == year_val) &
-            (df['transaction_date'].dt.quarter == quarter_val)
-        ]
-    elif period == "ytd":
-        current_year = year or datetime.now().year
-        df_period = df[df['transaction_date'].dt.year == current_year]
-    else:
-        current_year = year or datetime.now().year
-        df_period = df[df['transaction_date'].dt.year == current_year]
-    
     # Convert to records and return raw transaction data
-    transactions = df_period[['amount', 'spending_category', 'transaction_date']].to_dict('records')
+    transactions = df[['amount', 'spending_category', 'transaction_date']].to_dict('records')
     
     # Convert datetime to string for JSON serialization
     for transaction in transactions:
