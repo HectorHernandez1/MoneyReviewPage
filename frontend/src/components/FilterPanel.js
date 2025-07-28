@@ -1,23 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:8000';
 
-const FilterPanel = ({ period, year, user, onPeriodChange, onYearChange, onMonthChange, onQuarterChange, onUserChange }) => {
+const FilterPanel = ({ period, year, user, month, quarter, onFiltersChange }) => {
   const [users, setUsers] = useState([]);
   const [periods, setPeriods] = useState({ years: [], months: [], quarters: [] });
   const [loading, setLoading] = useState(true);
+  const hasInitialized = useRef(false);
   
   // Local state for pending filter changes
   const [pendingPeriod, setPendingPeriod] = useState(period);
   const [pendingYear, setPendingYear] = useState(year);
   const [pendingUser, setPendingUser] = useState(user);
-  const [pendingMonth, setPendingMonth] = useState('');
-  const [pendingQuarter, setPendingQuarter] = useState('');
+  const [pendingMonth, setPendingMonth] = useState(month || '');
+  const [pendingQuarter, setPendingQuarter] = useState(quarter || '');
 
   useEffect(() => {
-    fetchUsers();
-    fetchPeriods();
+    if (!hasInitialized.current) {
+      hasInitialized.current = true;
+      fetchStaticData();
+    }
   }, []);
 
   // Update local state when props change
@@ -25,54 +28,48 @@ const FilterPanel = ({ period, year, user, onPeriodChange, onYearChange, onMonth
     setPendingPeriod(period);
     setPendingYear(year);
     setPendingUser(user);
-  }, [period, year, user]);
+    setPendingMonth(month || '');
+    setPendingQuarter(quarter || '');
+  }, [period, year, user, month, quarter]);
 
   const handleApplyFilters = () => {
-    onPeriodChange(pendingPeriod);
-    onYearChange(pendingYear);
-    onUserChange(pendingUser);
-    // Pass selected month/quarter for API calls
-    if (pendingPeriod === 'monthly' && pendingMonth) {
-      onMonthChange?.(pendingMonth);
-    } else if (pendingPeriod === 'quarterly' && pendingQuarter) {
-      onQuarterChange?.(pendingQuarter);
-    }
+    const filters = {
+      period: pendingPeriod,
+      year: pendingYear,
+      user: pendingUser,
+      month: pendingPeriod === 'monthly' ? pendingMonth : '',
+      quarter: pendingPeriod === 'quarterly' ? pendingQuarter : ''
+    };
+    onFiltersChange(filters);
   };
 
   const hasChanges = pendingPeriod !== period || pendingYear !== year || pendingUser !== user || 
-    (pendingPeriod === 'monthly' && pendingMonth) || 
-    (pendingPeriod === 'quarterly' && pendingQuarter);
+    (pendingPeriod === 'monthly' && pendingMonth !== month) || 
+    (pendingPeriod === 'quarterly' && pendingQuarter !== quarter);
 
-
-  const fetchUsers = async () => {
+  const fetchStaticData = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/users`);
-      setUsers(response.data.users || []);
+      const [usersRes, periodsRes] = await Promise.all([
+        axios.get(`${API_BASE_URL}/users`),
+        axios.get(`${API_BASE_URL}/periods`)
+      ]);
+      
+      setUsers(usersRes.data.users || []);
+      setPeriods(periodsRes.data);
+      
+      if (!pendingMonth && periodsRes.data.months?.length > 0) {
+        setPendingMonth(periodsRes.data.months[0].value);
+      }
+      if (!pendingQuarter && periodsRes.data.quarters?.length > 0) {
+        setPendingQuarter(periodsRes.data.quarters[0].value);
+      }
     } catch (error) {
-      console.error('Error fetching users:', error);
-      // Fallback to some default users if API fails
+      console.error('Error fetching static data:', error);
       setUsers(['All Users', 'Hector', 'Spouse']);
     }
     setLoading(false);
   };
 
-  const fetchPeriods = async () => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/periods`);
-      setPeriods(response.data);
-      // Set default month/quarter to the first available
-      if (response.data.months?.length > 0) {
-        setPendingMonth(response.data.months[0].value);
-      }
-      if (response.data.quarters?.length > 0) {
-        setPendingQuarter(response.data.quarters[0].value);
-      }
-    } catch (error) {
-      console.error('Error fetching periods:', error);
-    }
-  };
-
-  // Use years from database, fallback to current approach
   const currentYear = new Date().getFullYear();
   const years = periods.years.length > 0 ? periods.years : Array.from({ length: 5 }, (_, i) => currentYear - i);
 

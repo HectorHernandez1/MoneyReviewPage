@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import axios from 'axios';
 import Dashboard from './components/Dashboard';
 import FilterPanel from './components/FilterPanel';
@@ -17,15 +18,30 @@ function App() {
   const [user, setUser] = useState('all');
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState({});
+  const fetchInProgress = useRef(false);
 
   useEffect(() => {
-    fetchData();
+    if (fetchInProgress.current) return;
+    fetchInProgress.current = true;
+    
+    fetchData().finally(() => {
+      fetchInProgress.current = false;
+    });
   }, [period, year, month, quarter, user]);
+
+  const handleFiltersChange = (filters) => {
+    flushSync(() => {
+      setPeriod(filters.period);
+      setYear(filters.year);
+      setUser(filters.user);
+      setMonth(filters.month || '');
+      setQuarter(filters.quarter || '');
+    });
+  };
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Build query parameters based on selected period
       const params = new URLSearchParams({
         period,
         user
@@ -68,11 +84,9 @@ function App() {
               period={period}
               year={year}
               user={user}
-              onPeriodChange={setPeriod}
-              onYearChange={setYear}
-              onMonthChange={setMonth}
-              onQuarterChange={setQuarter}
-              onUserChange={setUser}
+              month={month}
+              quarter={quarter}
+              onFiltersChange={handleFiltersChange}
             />
           </aside>
           
