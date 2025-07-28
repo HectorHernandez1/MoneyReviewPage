@@ -56,6 +56,55 @@ async def get_users_data():
         print(f"Database error: {e}")
         return []
 
+async def get_available_periods():
+    """
+    Fetch distinct months, quarters, and years from the transactions_view
+    """
+    query = """
+    SELECT DISTINCT 
+        EXTRACT(YEAR FROM transaction_date) as year,
+        EXTRACT(MONTH FROM transaction_date) as month,
+        EXTRACT(QUARTER FROM transaction_date) as quarter
+    FROM budget_app.transactions_view 
+    ORDER BY year DESC, month DESC;
+    """
+    
+    try:
+        conn = psycopg2.connect(**DB_CONFIG)
+        df = pd.read_sql(query, conn)
+        conn.close()
+        
+        # Get distinct years
+        years = sorted(df['year'].unique(), reverse=True)
+        
+        # Get months with year info
+        months = df[['year', 'month']].drop_duplicates().sort_values(['year', 'month'], ascending=[False, False])
+        month_options = []
+        for _, row in months.iterrows():
+            month_name = pd.to_datetime(f"{int(row['year'])}-{int(row['month'])}-01").strftime("%B")
+            month_options.append({
+                'value': f"{int(row['year'])}-{int(row['month']):02d}",
+                'label': f"{month_name} {int(row['year'])}"
+            })
+        
+        # Get quarters with year info
+        quarters = df[['year', 'quarter']].drop_duplicates().sort_values(['year', 'quarter'], ascending=[False, False])
+        quarter_options = []
+        for _, row in quarters.iterrows():
+            quarter_options.append({
+                'value': f"{int(row['year'])}-Q{int(row['quarter'])}",
+                'label': f"Q{int(row['quarter'])} {int(row['year'])}"
+            })
+        
+        return {
+            'years': [int(year) for year in years],
+            'months': month_options,
+            'quarters': quarter_options
+        }
+    except Exception as e:
+        print(f"Database error: {e}")
+        return {'years': [], 'months': [], 'quarters': []}
+
 def test_connection():
     """Test database connection"""
     try:

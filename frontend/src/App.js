@@ -12,21 +12,37 @@ function App() {
   const [categories, setCategories] = useState([]);
   const [period, setPeriod] = useState('monthly');
   const [year, setYear] = useState(new Date().getFullYear());
+  const [month, setMonth] = useState('');
+  const [quarter, setQuarter] = useState('');
   const [user, setUser] = useState('all');
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState({});
 
   useEffect(() => {
     fetchData();
-  }, [period, year, user]);
+  }, [period, year, month, quarter, user]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
+      // Build query parameters based on selected period
+      const params = new URLSearchParams({
+        period,
+        user
+      });
+      
+      if (period === 'monthly' && month) {
+        params.append('month', month);
+      } else if (period === 'quarterly' && quarter) {
+        params.append('quarter', quarter);
+      } else if (period === 'ytd' && year) {
+        params.append('year', year);
+      }
+      
       const [transactionsRes, categoriesRes, rawTransactionsRes] = await Promise.all([
-        axios.get(`${API_BASE_URL}/transactions?period=${period}&year=${year}&user=${user}`),
-        axios.get(`${API_BASE_URL}/categories?period=${period}&year=${year}&user=${user}`),
-        axios.get(`${API_BASE_URL}/raw-transactions?period=${period}&year=${year}&user=${user}`)
+        axios.get(`${API_BASE_URL}/transactions?${params.toString()}`),
+        axios.get(`${API_BASE_URL}/categories?${params.toString()}`),
+        axios.get(`${API_BASE_URL}/raw-transactions?${params.toString()}`)
       ]);
       
       setTransactions(transactionsRes.data.data);
@@ -52,9 +68,10 @@ function App() {
               period={period}
               year={year}
               user={user}
-              summary={summary}
               onPeriodChange={setPeriod}
               onYearChange={setYear}
+              onMonthChange={setMonth}
+              onQuarterChange={setQuarter}
               onUserChange={setUser}
             />
           </aside>
