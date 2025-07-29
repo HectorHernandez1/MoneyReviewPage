@@ -75,6 +75,12 @@ function App() {
     <div className="App">
       <header className="App-header">
         <h1>Budget Dashboard</h1>
+        <div className="user-display">
+          <span className="user-label">Viewing data for:</span>
+          <span className="user-name">
+            {user === 'all' ? 'All Users' : user}
+          </span>
+        </div>
       </header>
       
       <main className="App-main">
