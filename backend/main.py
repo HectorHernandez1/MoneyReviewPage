@@ -156,6 +156,71 @@ async def get_periods():
     periods = await get_available_periods()
     return periods
 
+@app.get("/category-transactions")
+async def get_category_transactions(
+    category: str,
+    period: Optional[str] = "monthly",
+    year: Optional[int] = None,
+    month: Optional[str] = None,
+    quarter: Optional[str] = None,
+    user: Optional[str] = None
+):
+    """
+    Get detailed transactions for a specific category
+    """
+    print(f"DEBUG: Requested category: '{category}'")
+    print(f"DEBUG: Parameters - period: {period}, user: {user}, month: {month}, quarter: {quarter}, year: {year}")
+    
+    # Get filtered data from database
+    df = await get_transactions_data(
+        user=user,
+        period=period,
+        year=year,
+        month=month,
+        quarter=quarter
+    )
+    
+    print(f"DEBUG: Total transactions from database: {len(df)}")
+    
+    if df.empty:
+        print("DEBUG: No transactions found from database")
+        return {"transactions": []}
+    
+    # Debug: Print available categories
+    available_categories = df['spending_category'].unique().tolist()
+    print(f"DEBUG: Available categories: {available_categories}")
+    
+    # Filter by category (case-insensitive comparison)
+    category_df = df[df['spending_category'].str.lower() == category.lower()].copy()
+    
+    print(f"DEBUG: Transactions found for category '{category}': {len(category_df)}")
+    
+    if category_df.empty:
+        return {"transactions": []}
+    
+    # Ensure transaction_date is properly formatted
+    category_df['transaction_date'] = pd.to_datetime(category_df['transaction_date'])
+    
+    # Sort by date descending (most recent first)
+    category_df = category_df.sort_values('transaction_date', ascending=False)
+    
+    # Convert to records with all requested columns
+    transactions = category_df[[
+        'amount',
+        'merchant_name', 
+        'spending_category',
+        'person',
+        'transaction_date',
+        'account_type'
+    ]].to_dict('records')
+    
+    # Convert datetime to string for JSON serialization
+    for transaction in transactions:
+        transaction['transaction_date'] = transaction['transaction_date'].strftime('%Y-%m-%d')
+    
+    print(f"DEBUG: Returning {len(transactions)} transactions")
+    return {"transactions": transactions}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

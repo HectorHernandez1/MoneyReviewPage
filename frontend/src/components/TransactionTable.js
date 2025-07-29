@@ -38,30 +38,27 @@ const TransactionTable = ({ transactions, category, onClose }) => {
         <button className="close-button" onClick={onClose}>×</button>
       </div>
       
-      {/* Show notice when using mock data */}
-      {transactions.some(t => t.description?.includes('Sample transaction')) && (
-        <div className="mock-data-notice">
-          <strong>Note:</strong> Backend endpoint not implemented yet. Showing sample data for demonstration.
-        </div>
-      )}
-      
       <div className="transaction-table-wrapper">
         <table className="transaction-table">
           <thead>
             <tr>
               <th>Date</th>
-              <th>Description</th>
+              <th>Merchant</th>
+              <th>Category</th>
+              <th>Person</th>
+              <th>Account</th>
               <th>Amount</th>
-              <th>User</th>
             </tr>
           </thead>
           <tbody>
             {transactions.map((transaction, index) => (
               <tr key={index}>
                 <td>{formatDate(transaction.transaction_date)}</td>
-                <td className="description">{transaction.description}</td>
+                <td className="merchant">{transaction.merchant_name || 'Unknown'}</td>
+                <td className="category">{transaction.spending_category}</td>
+                <td className="person">{transaction.person || 'Unknown'}</td>
+                <td className="account">{transaction.account_type || 'Unknown'}</td>
                 <td className="amount">{formatAmount(transaction.amount)}</td>
-                <td className="user">{transaction.user_name || 'Unknown'}</td>
               </tr>
             ))}
           </tbody>

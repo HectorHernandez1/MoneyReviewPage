@@ -97,30 +97,9 @@ function App() {
     } catch (error) {
       console.error('Error fetching category transactions:', error);
       
-      // If endpoint doesn't exist (404), provide helpful feedback
-      if (error.response?.status === 404) {
-        console.warn('Category transactions endpoint not implemented yet. Using mock data for demo.');
-        // Set mock data for demonstration
-        setCategoryTransactions([
-          {
-            transaction_date: '2024-01-15',
-            description: `Sample transaction for ${category}`,
-            amount: -50.00,
-            user_name: user === 'all' ? 'Demo User' : user
-          },
-          {
-            transaction_date: '2024-01-10',
-            description: `Another ${category} transaction`,
-            amount: -25.50,
-            user_name: user === 'all' ? 'Demo User' : user
-          }
-        ]);
-        setSelectedCategory(category);
-      } else {
-        // For other errors, show empty state
-        setCategoryTransactions([]);
-        setSelectedCategory(category);
-      }
+      // For any error, show empty state
+      setCategoryTransactions([]);
+      setSelectedCategory(category);
     }
     setLoadingTransactions(false);
   };
