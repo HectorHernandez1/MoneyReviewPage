@@ -10,6 +10,9 @@ const LineChart = ({ data, period }) => {
     try {
       const svg = d3.select(svgRef.current);
       svg.selectAll("*").remove();
+      
+      // Clean up any existing tooltips
+      d3.selectAll(".chart-tooltip").remove();
 
       // Get the container dimensions dynamically
       const container = svgRef.current.parentNode;
@@ -158,7 +161,22 @@ const LineChart = ({ data, period }) => {
         .style("stroke-width", 3)
         .style("filter", "drop-shadow(0 2px 4px rgba(0,0,0,0.3))");
 
-      // Add dots
+      // Create tooltip
+      const tooltip = d3.select("body").append("div")
+        .attr("class", "chart-tooltip")
+        .style("position", "absolute")
+        .style("visibility", "hidden")
+        .style("background", "rgba(0, 0, 0, 0.8)")
+        .style("color", "white")
+        .style("padding", "8px 12px")
+        .style("border-radius", "4px")
+        .style("font-size", "12px")
+        .style("pointer-events", "none")
+        .style("z-index", "1000");
+
+      let hoverTimeout;
+
+      // Add dots with hover functionality
       g.selectAll(".dot")
         .data(processedData)
         .enter().append("circle")
@@ -170,7 +188,52 @@ const LineChart = ({ data, period }) => {
         .style("stroke", "#3b82f6")
         .style("stroke-width", 2)
         .style("filter", "drop-shadow(0 2px 4px rgba(0,0,0,0.3))")
-        .style("cursor", "pointer");
+        .style("cursor", "pointer")
+        .on("mouseover", function(event, d) {
+          // Clear any existing timeout
+          clearTimeout(hoverTimeout);
+          
+          // Set timeout for 0.8 seconds
+          hoverTimeout = setTimeout(() => {
+            // Show tooltip after 0.8 seconds
+            tooltip.style("visibility", "visible")
+              .html(`
+                <div><strong>Date:</strong> ${d.label}</div>
+                <div><strong>Amount:</strong> $${d3.format(",.2f")(d.amount)}</div>
+              `)
+              .style("left", (event.pageX + 10) + "px")
+              .style("top", (event.pageY - 10) + "px");
+            
+            // Highlight the dot
+            d3.select(this)
+              .transition()
+              .duration(200)
+              .attr("r", 6)
+              .style("fill", "#3b82f6");
+          }, 500);
+        })
+        .on("mousemove", function(event) {
+          // Update tooltip position if it's visible
+          if (tooltip.style("visibility") === "visible") {
+            tooltip
+              .style("left", (event.pageX + 10) + "px")
+              .style("top", (event.pageY - 10) + "px");
+          }
+        })
+        .on("mouseout", function() {
+          // Clear the timeout if mouse leaves before 0.8 seconds
+          clearTimeout(hoverTimeout);
+          
+          // Hide tooltip
+          tooltip.style("visibility", "hidden");
+          
+          // Reset dot appearance
+          d3.select(this)
+            .transition()
+            .duration(200)
+            .attr("r", 4)
+            .style("fill", "#60a5fa");
+        });
 
       // Add x-axis with better formatting and fewer ticks
       let xAxisFormat, tickCount;
@@ -239,6 +302,9 @@ const LineChart = ({ data, period }) => {
     
     return () => {
       window.removeEventListener('resize', handleResize);
+      
+      // Clean up any existing tooltips
+      d3.selectAll(".chart-tooltip").remove();
     };
   }, [data, period]);
 
