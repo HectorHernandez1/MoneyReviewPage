@@ -4,21 +4,27 @@ import * as d3 from 'd3';
 const PieChart = ({ data }) => {
   const svgRef = useRef();
 
-  useEffect(() => {
+  const renderChart = () => {
     if (!data || data.length === 0) return;
 
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
 
-    const width = 600;
+    // Get the container dimensions dynamically
+    const container = svgRef.current.parentNode;
+    const containerWidth = container.getBoundingClientRect().width;
+    
+    // Make responsive with better proportions
+    const width = containerWidth - 40; // Leave some padding
     const height = 400;
-    const chartWidth = 300;
-    const legendWidth = 200;
-    const radius = Math.min(chartWidth, height) / 2 - 10;
+    const chartWidth = Math.min(width * 0.6, 300); // Chart takes 60% of width, max 300px
+    const legendWidth = width - chartWidth - 40; // Remaining space for legend
+    const radius = Math.min(chartWidth, height) / 2 - 20;
 
     const chartG = svg
-      .attr("width", width)
+      .attr("width", "100%")
       .attr("height", height)
+      .attr("viewBox", `0 0 ${width} ${height}`)
       .append("g")
       .attr("transform", `translate(${chartWidth / 2},${height / 2})`);
 
@@ -169,10 +175,24 @@ const PieChart = ({ data }) => {
         percentageLabels.style("opacity", 0);
         legendItems.style("font-weight", "normal");
       });
+  };
 
+  useEffect(() => {
+    renderChart();
+    
+    // Add resize listener
+    const handleResize = () => {
+      renderChart();
+    };
+    
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
   }, [data]);
 
-  return <svg ref={svgRef}></svg>;
+  return <svg ref={svgRef} style={{ width: '100%', height: 'auto' }}></svg>;
 };
 
 export default PieChart;
