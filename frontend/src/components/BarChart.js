@@ -40,6 +40,40 @@ const BarChart = ({ data, period }) => {
       .domain([0, d3.max(categoryData, d => d.amount)])
       .range([height, 0]);
 
+    // Create consistent color scale for categories
+    const color = d3.scaleOrdinal([
+      '#ff6b6b', // Bright Red
+      '#4ecdc4', // Teal
+      '#45b7d1', // Sky Blue  
+      '#f9ca24', // Golden Yellow
+      '#6c5ce7', // Purple
+      '#fd79a8', // Pink
+      '#00b894', // Green
+      '#fdcb6e', // Orange
+      '#e17055', // Coral
+      '#74b9ff', // Light Blue
+      '#a29bfe', // Lavender
+      '#ff9ff3', // Hot Pink
+      '#00cec9', // Cyan
+      '#55a3ff', // Blue
+      '#ff7675', // Salmon
+      '#26de81', // Mint Green
+      '#ffa726', // Deep Orange
+      '#9c88ff', // Violet
+      '#ff9ff3', // Magenta
+      '#54a0ff', // Bright Blue
+      '#5f27cd', // Deep Purple
+      '#00d2d3', // Turquoise
+      '#ff9f43', // Bright Orange
+      '#ee5a6f', // Rose
+      '#0abde3', // Electric Blue
+      '#10ac84', // Emerald
+      '#f368e0', // Fuchsia
+      '#ff6348', // Tomato
+      '#7bed9f', // Light Green
+      '#70a1ff'  // Periwinkle
+    ]);
+
     g.selectAll(".bar")
       .data(categoryData)
       .enter().append("rect")
@@ -48,9 +82,10 @@ const BarChart = ({ data, period }) => {
       .attr("width", xScale.bandwidth())
       .attr("y", d => yScale(d.amount))
       .attr("height", d => height - yScale(d.amount))
-      .attr("fill", "#60a5fa")
-      .attr("stroke", "#3b82f6")
-      .attr("stroke-width", 1);
+      .attr("fill", d => color(d.category))
+      .attr("stroke", "#1a202c")
+      .attr("stroke-width", 2)
+      .style("filter", "drop-shadow(0 2px 4px rgba(0,0,0,0.3))");
 
     g.append("g")
       .attr("class", "x-axis")

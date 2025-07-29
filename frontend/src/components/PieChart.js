@@ -80,7 +80,7 @@ const PieChart = ({ data }) => {
 
     const paths = arcs.append("path")
       .attr("d", path)
-      .attr("fill", (_, i) => color(i))
+      .attr("fill", d => color(d.data.spending_category))
       .attr("stroke", "#1a202c")
       .attr("stroke-width", 3)
       .style("cursor", "pointer")
@@ -112,7 +112,7 @@ const PieChart = ({ data }) => {
     legendItems.append("rect")
       .attr("width", 18)
       .attr("height", 18)
-      .attr("fill", (_, i) => color(i));
+      .attr("fill", d => color(d.spending_category));
 
     legendItems.append("text")
       .attr("x", 25)
