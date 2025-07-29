@@ -74,7 +74,7 @@ const BarChart = ({ data, period }) => {
       '#70a1ff'  // Periwinkle
     ]);
 
-    g.selectAll(".bar")
+    const bars = g.selectAll(".bar")
       .data(categoryData)
       .enter().append("rect")
       .attr("class", "bar")
@@ -85,7 +85,40 @@ const BarChart = ({ data, period }) => {
       .attr("fill", d => color(d.category))
       .attr("stroke", "#1a202c")
       .attr("stroke-width", 2)
-      .style("filter", "drop-shadow(0 2px 4px rgba(0,0,0,0.3))");
+      .style("filter", "drop-shadow(0 2px 4px rgba(0,0,0,0.3))")
+      .style("cursor", "pointer")
+      .on("mouseover", function(event, d) {
+        // Highlight this bar
+        d3.select(this)
+          .transition()
+          .duration(200)
+          .style("opacity", 1)
+          .attr("stroke-width", 3);
+        
+        // Dim other bars
+        bars.filter(data => data.category !== d.category)
+          .transition()
+          .duration(200)
+          .style("opacity", 0.3);
+        
+        // Dispatch custom event for cross-chart communication
+        document.dispatchEvent(new CustomEvent('categoryHover', {
+          detail: { category: d.category, source: 'bar' }
+        }));
+      })
+      .on("mouseout", function() {
+        // Reset all bars
+        bars
+          .transition()
+          .duration(200)
+          .style("opacity", 1)
+          .attr("stroke-width", 2);
+        
+        // Dispatch custom event for cross-chart communication
+        document.dispatchEvent(new CustomEvent('categoryHoverEnd', {
+          detail: { source: 'bar' }
+        }));
+      });
 
     g.append("g")
       .attr("class", "x-axis")
@@ -113,6 +146,34 @@ const BarChart = ({ data, period }) => {
     g.select(".y-axis")
       .selectAll(".domain, .tick line")
       .style("stroke", "#4a5568");
+
+    // Listen for cross-chart events
+    const handleCategoryHover = (event) => {
+      if (event.detail.source === 'bar') return; // Ignore events from this chart
+      
+      const category = event.detail.category;
+      
+      // Highlight matching bar, dim others
+      bars.style("opacity", d => d.category === category ? 1 : 0.3)
+          .attr("stroke-width", d => d.category === category ? 3 : 2);
+    };
+
+    const handleCategoryHoverEnd = (event) => {
+      if (event.detail.source === 'bar') return; // Ignore events from this chart
+      
+      // Reset all bars
+      bars.style("opacity", 1)
+          .attr("stroke-width", 2);
+    };
+
+    document.addEventListener('categoryHover', handleCategoryHover);
+    document.addEventListener('categoryHoverEnd', handleCategoryHoverEnd);
+
+    // Cleanup function
+    return () => {
+      document.removeEventListener('categoryHover', handleCategoryHover);
+      document.removeEventListener('categoryHoverEnd', handleCategoryHoverEnd);
+    };
 
   }, [data, period]);
 

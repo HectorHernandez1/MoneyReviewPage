@@ -139,6 +139,11 @@ const PieChart = ({ data }) => {
         
         // Highlight legend item
         d3.select(this).style("font-weight", "bold");
+        
+        // Dispatch custom event for cross-chart communication
+        document.dispatchEvent(new CustomEvent('categoryHover', {
+          detail: { category: category, source: 'pie' }
+        }));
       })
       .on("mouseout", function() {
         // Reset all pie slices
@@ -147,6 +152,11 @@ const PieChart = ({ data }) => {
         
         // Reset legend items
         legendItems.style("font-weight", "normal");
+        
+        // Dispatch custom event for cross-chart communication
+        document.dispatchEvent(new CustomEvent('categoryHoverEnd', {
+          detail: { source: 'pie' }
+        }));
       });
 
     // Add hover to pie slices as well
@@ -168,12 +178,22 @@ const PieChart = ({ data }) => {
         legendItems.style("font-weight", function(legendData) {
           return legendData.spending_category === category ? "bold" : "normal";
         });
+        
+        // Dispatch custom event for cross-chart communication
+        document.dispatchEvent(new CustomEvent('categoryHover', {
+          detail: { category: category, source: 'pie' }
+        }));
       })
       .on("mouseout", function() {
         // Reset all
         paths.style("opacity", 1);
         percentageLabels.style("opacity", 0);
         legendItems.style("font-weight", "normal");
+        
+        // Dispatch custom event for cross-chart communication
+        document.dispatchEvent(new CustomEvent('categoryHoverEnd', {
+          detail: { source: 'pie' }
+        }));
       });
   };
 
@@ -185,10 +205,51 @@ const PieChart = ({ data }) => {
       renderChart();
     };
     
+    // Listen for cross-chart events
+    const handleCategoryHover = (event) => {
+      if (event.detail.source === 'pie') return; // Ignore events from this chart
+      
+      const category = event.detail.category;
+      const svg = d3.select(svgRef.current);
+      
+      // Highlight matching pie slice and legend, dim others
+      svg.selectAll('.arc path')
+        .style("opacity", function(d) {
+          return d.data.spending_category === category ? 1 : 0.3;
+        });
+      
+      // Show percentage for matching slice
+      svg.selectAll('.arc text')
+        .style("opacity", function(d) {
+          return d.data.spending_category === category ? 1 : 0;
+        });
+      
+      // Highlight matching legend item
+      svg.selectAll('.legend-item')
+        .style("font-weight", function(d) {
+          return d.spending_category === category ? "bold" : "normal";
+        });
+    };
+
+    const handleCategoryHoverEnd = (event) => {
+      if (event.detail.source === 'pie') return; // Ignore events from this chart
+      
+      const svg = d3.select(svgRef.current);
+      
+      // Reset all pie slices and legend
+      svg.selectAll('.arc path').style("opacity", 1);
+      svg.selectAll('.arc text').style("opacity", 0);
+      svg.selectAll('.legend-item').style("font-weight", "normal");
+    };
+    
     window.addEventListener('resize', handleResize);
+    document.addEventListener('categoryHover', handleCategoryHover);
+    document.addEventListener('categoryHoverEnd', handleCategoryHoverEnd);
     
     return () => {
       window.removeEventListener('resize', handleResize);
+      document.removeEventListener('categoryHover', handleCategoryHover);
+      document.removeEventListener('categoryHoverEnd', handleCategoryHoverEnd);
     };
   }, [data]);
 
