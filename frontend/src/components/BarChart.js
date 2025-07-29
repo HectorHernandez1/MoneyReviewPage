@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 
-const BarChart = ({ data, period }) => {
+const BarChart = ({ data, period, onCategoryClick }) => {
   const svgRef = useRef();
 
   useEffect(() => {
@@ -23,7 +23,7 @@ const BarChart = ({ data, period }) => {
     // Always show spending by category regardless of time frame
     const aggregatedData = d3.rollup(
       data,
-      v => d3.sum(v, d => d.amount),
+      v => d3.sum(v, d => Math.abs(d.amount)), // Use absolute value to avoid negative amounts
       d => d.spending_category
     );
     const categoryData = Array.from(aggregatedData, ([key, value]) => ({
@@ -118,6 +118,11 @@ const BarChart = ({ data, period }) => {
         document.dispatchEvent(new CustomEvent('categoryHoverEnd', {
           detail: { source: 'bar' }
         }));
+      })
+      .on("click", function(_, d) {
+        if (onCategoryClick) {
+          onCategoryClick(d.category);
+        }
       });
 
     g.append("g")

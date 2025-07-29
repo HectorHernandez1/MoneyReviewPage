@@ -332,3 +332,138 @@
     order: -1;
   }
 }
+
+/* Transaction Table Styles */
+.transaction-table-container {
+  background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  border: 1px solid #374151;
+  margin-top: 20px;
+  overflow: hidden;
+}
+
+.transaction-table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #374151;
+  background: linear-gradient(135deg, #2d3748 0%, #374151 100%);
+}
+
+.transaction-table-header h3 {
+  margin: 0;
+  color: #f3f4f6;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.close-button:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.transaction-table-wrapper {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.transaction-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.transaction-table th {
+  background: #374151;
+  color: #e5e7eb;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid #4b5563;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.transaction-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #374151;
+  color: #d1d5db;
+  font-size: 0.9rem;
+}
+
+.transaction-table tr:hover {
+  background: rgba(96, 165, 250, 0.05);
+}
+
+.transaction-table .description {
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.transaction-table .amount {
+  text-align: right;
+  font-weight: 600;
+  color: #60a5fa;
+}
+
+.transaction-table .user {
+  color: #9ca3af;
+  font-size: 0.85rem;
+}
+
+.no-transactions {
+  padding: 40px 24px;
+  text-align: center;
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.mock-data-notice {
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin: 0 16px 16px 16px;
+  color: #fbbf24;
+  font-size: 0.9rem;
+}
+
+.mock-data-notice strong {
+  color: #f59e0b;
+}
+
+/* Scrollbar styling for transaction table */
+.transaction-table-wrapper::-webkit-scrollbar {
+  width: 6px;
+}
+
+.transaction-table-wrapper::-webkit-scrollbar-track {
+  background: #1a202c;
+}
+
+.transaction-table-wrapper::-webkit-scrollbar-thumb {
+  background: #4a5568;
+  border-radius: 3px;
+}
+
+.transaction-table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #60a5fa;
+}

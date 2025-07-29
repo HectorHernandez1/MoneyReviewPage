@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 
-const PieChart = ({ data }) => {
+const PieChart = ({ data, onCategoryClick }) => {
   const svgRef = useRef();
 
   const renderChart = () => {
@@ -157,6 +157,11 @@ const PieChart = ({ data }) => {
         document.dispatchEvent(new CustomEvent('categoryHoverEnd', {
           detail: { source: 'pie' }
         }));
+      })
+      .on("click", function(_, d) {
+        if (onCategoryClick) {
+          onCategoryClick(d.spending_category);
+        }
       });
 
     // Add hover to pie slices as well
@@ -194,6 +199,11 @@ const PieChart = ({ data }) => {
         document.dispatchEvent(new CustomEvent('categoryHoverEnd', {
           detail: { source: 'pie' }
         }));
+      })
+      .on("click", function(_, d) {
+        if (onCategoryClick) {
+          onCategoryClick(d.data.spending_category);
+        }
       });
   };
 

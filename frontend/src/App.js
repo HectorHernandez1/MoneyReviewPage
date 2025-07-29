@@ -18,6 +18,9 @@ function App() {
   const [user, setUser] = useState('all');
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState({});
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [categoryTransactions, setCategoryTransactions] = useState([]);
+  const [loadingTransactions, setLoadingTransactions] = useState(false);
   const fetchInProgress = useRef(false);
 
   useEffect(() => {
@@ -71,6 +74,66 @@ function App() {
     setLoading(false);
   };
 
+  const fetchCategoryTransactions = async (category) => {
+    setLoadingTransactions(true);
+    try {
+      const params = new URLSearchParams({
+        category,
+        period,
+        user
+      });
+      
+      if (period === 'monthly' && month) {
+        params.append('month', month);
+      } else if (period === 'quarterly' && quarter) {
+        params.append('quarter', quarter);
+      } else if (period === 'ytd' && year) {
+        params.append('year', year);
+      }
+      
+      const response = await axios.get(`${API_BASE_URL}/category-transactions?${params.toString()}`);
+      setCategoryTransactions(response.data.transactions || []);
+      setSelectedCategory(category);
+    } catch (error) {
+      console.error('Error fetching category transactions:', error);
+      
+      // If endpoint doesn't exist (404), provide helpful feedback
+      if (error.response?.status === 404) {
+        console.warn('Category transactions endpoint not implemented yet. Using mock data for demo.');
+        // Set mock data for demonstration
+        setCategoryTransactions([
+          {
+            transaction_date: '2024-01-15',
+            description: `Sample transaction for ${category}`,
+            amount: -50.00,
+            user_name: user === 'all' ? 'Demo User' : user
+          },
+          {
+            transaction_date: '2024-01-10',
+            description: `Another ${category} transaction`,
+            amount: -25.50,
+            user_name: user === 'all' ? 'Demo User' : user
+          }
+        ]);
+        setSelectedCategory(category);
+      } else {
+        // For other errors, show empty state
+        setCategoryTransactions([]);
+        setSelectedCategory(category);
+      }
+    }
+    setLoadingTransactions(false);
+  };
+
+  const handleCategoryClick = (category) => {
+    fetchCategoryTransactions(category);
+  };
+
+  const handleCloseTransactionTable = () => {
+    setSelectedCategory(null);
+    setCategoryTransactions([]);
+  };
+
   return (
     <div className="App">
       <header className="App-header">
@@ -100,13 +163,20 @@ function App() {
             {loading ? (
               <div className="loading">Loading...</div>
             ) : (
-              <Dashboard 
-                transactions={transactions}
-                rawTransactions={rawTransactions}
-                categories={categories}
-                summary={summary}
-                period={period}
-              />
+              <>
+                <Dashboard 
+                  transactions={transactions}
+                  rawTransactions={rawTransactions}
+                  categories={categories}
+                  summary={summary}
+                  period={period}
+                  onCategoryClick={handleCategoryClick}
+                  selectedCategory={selectedCategory}
+                  categoryTransactions={categoryTransactions}
+                  loadingTransactions={loadingTransactions}
+                  onCloseTransactionTable={handleCloseTransactionTable}
+                />
+              </>
             )}
           </div>
         </div>
