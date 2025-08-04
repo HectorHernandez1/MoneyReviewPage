@@ -24,7 +24,22 @@
 - **Direct Frontend**: http://192.168.x.x:3000 (development)
 - **Direct Backend**: http://192.168.x.x:8000 (development)
 
-## Installation Commands
+## Quick Production Deployment
+
+### Automated Deployment (Recommended)
+```bash
+# 1. Clone repository to production directory
+cd /var/www/sites/budget
+git clone git@github.com:HectorHernandez1/MoneyReviewPage.git .
+
+# 2. Make deployment script executable
+chmod +x deploy-production.sh
+
+# 3. Run automated deployment (does everything!)
+./deploy-production.sh
+```
+
+### Manual Installation Commands (Alternative)
 
 ### 1. System Dependencies
 ```bash
@@ -208,10 +223,50 @@ tail -f /var/www/sites/budget/logs/app.log
 - Nginx serves static files directly for better performance
 - PM2 handles process management and auto-restart
 
+## Production Management
+
+### Daily Management Commands
+```bash
+# Check service status
+./manage-production.sh status
+
+# Start all services
+./manage-production.sh start
+
+# Stop all services
+./manage-production.sh stop
+
+# Restart all services
+./manage-production.sh restart
+
+# View backend logs
+./manage-production.sh logs
+
+# Update from git and redeploy
+./manage-production.sh update
+
+# Health check
+./manage-production.sh health
+```
+
+### Manual Service Management
+```bash
+# PM2 commands
+pm2 status                    # View all processes
+pm2 logs budget-backend       # View backend logs
+pm2 restart budget-backend    # Restart backend
+pm2 stop budget-backend       # Stop backend
+pm2 delete budget-backend     # Remove process
+
+# Nginx commands
+sudo systemctl status nginx   # Check nginx status
+sudo systemctl reload nginx   # Reload nginx config
+sudo nginx -t                 # Test nginx config
+```
+
 ## Future Enhancements
 - SSL certificate for HTTPS
 - Domain name instead of IP address
-- Automated deployment script
 - Database connection pooling
 - Log rotation setup
 - Backup automation
@@ -222,5 +277,6 @@ tail -f /var/www/sites/budget/logs/app.log
 - **PM2 Process**: `pm2 list` to view
 - **Logs**: `/var/www/sites/budget/logs/`
 - **Database Backups**: `/var/www/sites/budget/database/`
+- **Deployment Scripts**: `deploy-production.sh`, `manage-production.sh`
 
 Last Updated: August 4, 2025
