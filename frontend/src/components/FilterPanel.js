@@ -30,12 +30,26 @@ const FilterPanel = ({ period, year, user, month, onFiltersChange }) => {
     setPendingMonth(month || '');
   }, [period, year, user, month]);
 
+  // Auto-select month when switching to monthly period and no month is set
+  useEffect(() => {
+    if (pendingPeriod === 'monthly' && !pendingMonth && periods.months?.length > 0) {
+      setPendingMonth(periods.months[0].value);
+    }
+  }, [pendingPeriod, pendingMonth, periods.months]);
+
   const handleApplyFilters = () => {
+    // Ensure we have a month selected when period is monthly
+    let monthToUse = pendingMonth;
+    if (pendingPeriod === 'monthly' && !monthToUse && periods.months?.length > 0) {
+      monthToUse = periods.months[0].value;
+      setPendingMonth(monthToUse);
+    }
+    
     const filters = {
       period: pendingPeriod,
       year: pendingYear,
       user: pendingUser,
-      month: pendingPeriod === 'monthly' ? pendingMonth : ''
+      month: pendingPeriod === 'monthly' ? monthToUse : ''
     };
     onFiltersChange(filters);
   };
@@ -92,7 +106,15 @@ const FilterPanel = ({ period, year, user, month, onFiltersChange }) => {
         <select 
           id="period-select"
           value={pendingPeriod} 
-          onChange={(e) => setPendingPeriod(e.target.value)}
+          onChange={(e) => {
+            const newPeriod = e.target.value;
+            setPendingPeriod(newPeriod);
+            
+            // Auto-select first month when switching to monthly
+            if (newPeriod === 'monthly' && !pendingMonth && periods.months?.length > 0) {
+              setPendingMonth(periods.months[0].value);
+            }
+          }}
         >
           <option value="monthly">Monthly</option>
           <option value="yearly">Yearly</option>
