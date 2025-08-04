@@ -24,22 +24,19 @@ async def get_transactions(
     period: Optional[str] = "monthly",
     year: Optional[int] = None,
     month: Optional[str] = None,
-    quarter: Optional[str] = None,
     user: Optional[str] = None
 ):
     """
     Get transaction data aggregated by period
-    period: 'monthly', 'quarterly', 'ytd'
+    period: 'monthly', 'ytd'
     month: 'YYYY-MM' format for specific month
-    quarter: 'YYYY-QN' format for specific quarter
     """
     # Get filtered data directly from database
     df = await get_transactions_data(
         user=user,
         period=period,
         year=year,
-        month=month,
-        quarter=quarter
+        month=month
     )
     
     if df.empty:
@@ -51,9 +48,6 @@ async def get_transactions(
     if period == "monthly" and month:
         year_val, month_val = month.split('-')
         current_period_info = pd.to_datetime(f"{year_val}-{month_val}-01").strftime("%B %Y")
-    elif period == "quarterly" and quarter:
-        year_val, quarter_val = quarter.split('-Q')
-        current_period_info = f"Q{quarter_val} {year_val}"
     elif period == "ytd":
         current_year = year or datetime.now().year
         current_period_info = f"{current_year}-YTD"
@@ -80,7 +74,6 @@ async def get_categories(
     period: Optional[str] = "monthly",
     year: Optional[int] = None,
     month: Optional[str] = None,
-    quarter: Optional[str] = None,
     user: Optional[str] = None
 ):
     """Get spending categories summary for the specified period"""
@@ -89,8 +82,7 @@ async def get_categories(
         user=user,
         period=period,
         year=year,
-        month=month,
-        quarter=quarter
+        month=month
     )
     
     if df.empty:
@@ -111,7 +103,6 @@ async def get_raw_transactions(
     period: Optional[str] = "monthly",
     year: Optional[int] = None,
     month: Optional[str] = None,
-    quarter: Optional[str] = None,
     user: Optional[str] = None
 ):
     """
@@ -122,8 +113,7 @@ async def get_raw_transactions(
         user=user,
         period=period,
         year=year,
-        month=month,
-        quarter=quarter
+        month=month
     )
     
     if df.empty:
@@ -152,7 +142,7 @@ async def get_users():
 
 @app.get("/periods")
 async def get_periods():
-    """Get available periods (months, quarters, years) from database"""
+    """Get available periods (months, years) from database"""
     periods = await get_available_periods()
     return periods
 
@@ -162,22 +152,20 @@ async def get_category_transactions(
     period: Optional[str] = "monthly",
     year: Optional[int] = None,
     month: Optional[str] = None,
-    quarter: Optional[str] = None,
     user: Optional[str] = None
 ):
     """
     Get detailed transactions for a specific category
     """
     print(f"DEBUG: Requested category: '{category}'")
-    print(f"DEBUG: Parameters - period: {period}, user: {user}, month: {month}, quarter: {quarter}, year: {year}")
+    print(f"DEBUG: Parameters - period: {period}, user: {user}, month: {month}, year: {year}")
     
     # Get filtered data from database
     df = await get_transactions_data(
         user=user,
         period=period,
         year=year,
-        month=month,
-        quarter=quarter
+        month=month
     )
     
     print(f"DEBUG: Total transactions from database: {len(df)}")

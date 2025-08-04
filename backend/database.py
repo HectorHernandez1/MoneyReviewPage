@@ -19,18 +19,16 @@ async def get_transactions_data(
     user=None, 
     period=None, 
     year=None, 
-    month=None, 
-    quarter=None
+    month=None
 ):
     """
     Fetch filtered data from the transactions_view
     
     Args:
         user: Filter by specific user/person (None for all users)
-        period: 'monthly', 'quarterly', 'ytd', or 'yearly'
+        period: 'monthly', 'ytd', or 'yearly'
         year: Specific year (for ytd or yearly periods)
         month: Specific month in YYYY-MM format (for monthly period)
-        quarter: Specific quarter in YYYY-QN format (for quarterly period)
     
     Default behavior: Returns current month data if no parameters provided
     """
@@ -64,11 +62,6 @@ async def get_transactions_data(
         conditions.append("EXTRACT(YEAR FROM transaction_date) = %s AND EXTRACT(MONTH FROM transaction_date) = %s")
         params.extend([int(year_val), int(month_val)])
         
-    elif period == 'quarterly' and quarter:
-        # Parse YYYY-QN format
-        year_val, quarter_val = quarter.split('-Q')
-        conditions.append("EXTRACT(YEAR FROM transaction_date) = %s AND EXTRACT(QUARTER FROM transaction_date) = %s")
-        params.extend([int(year_val), int(quarter_val)])
         
     elif period == 'ytd' and year:
         conditions.append("EXTRACT(YEAR FROM transaction_date) = %s")
@@ -120,13 +113,12 @@ async def get_users_data():
 
 async def get_available_periods():
     """
-    Fetch distinct months, quarters, and years from the transactions_view
+    Fetch distinct months and years from the transactions_view
     """
     query = """
     SELECT DISTINCT 
         EXTRACT(YEAR FROM transaction_date) as year,
-        EXTRACT(MONTH FROM transaction_date) as month,
-        EXTRACT(QUARTER FROM transaction_date) as quarter
+        EXTRACT(MONTH FROM transaction_date) as month
     FROM budget_app.transactions_view 
     ORDER BY year DESC, month DESC;
     """
@@ -149,23 +141,14 @@ async def get_available_periods():
                 'label': f"{month_name} {int(row['year'])}"
             })
         
-        # Get quarters with year info
-        quarters = df[['year', 'quarter']].drop_duplicates().sort_values(['year', 'quarter'], ascending=[False, False])
-        quarter_options = []
-        for _, row in quarters.iterrows():
-            quarter_options.append({
-                'value': f"{int(row['year'])}-Q{int(row['quarter'])}",
-                'label': f"Q{int(row['quarter'])} {int(row['year'])}"
-            })
         
         return {
             'years': [int(year) for year in years],
-            'months': month_options,
-            'quarters': quarter_options
+            'months': month_options
         }
     except Exception as e:
         print(f"Database error: {e}")
-        return {'years': [], 'months': [], 'quarters': []}
+        return {'years': [], 'months': []}
 
 def test_connection():
     """Test database connection"""

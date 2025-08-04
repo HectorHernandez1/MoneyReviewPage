@@ -14,7 +14,6 @@ function App() {
   const [period, setPeriod] = useState('monthly');
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState('');
-  const [quarter, setQuarter] = useState('');
   const [user, setUser] = useState('all');
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState({});
@@ -30,7 +29,7 @@ function App() {
     fetchData().finally(() => {
       fetchInProgress.current = false;
     });
-  }, [period, year, month, quarter, user]);
+  }, [period, year, month, user]);
 
   const handleFiltersChange = (filters) => {
     flushSync(() => {
@@ -38,7 +37,6 @@ function App() {
       setYear(filters.year);
       setUser(filters.user);
       setMonth(filters.month || '');
-      setQuarter(filters.quarter || '');
     });
   };
 
@@ -52,8 +50,6 @@ function App() {
       
       if (period === 'monthly' && month) {
         params.append('month', month);
-      } else if (period === 'quarterly' && quarter) {
-        params.append('quarter', quarter);
       } else if (period === 'ytd' && year) {
         params.append('year', year);
       }
@@ -85,8 +81,6 @@ function App() {
       
       if (period === 'monthly' && month) {
         params.append('month', month);
-      } else if (period === 'quarterly' && quarter) {
-        params.append('quarter', quarter);
       } else if (period === 'ytd' && year) {
         params.append('year', year);
       }
@@ -133,7 +127,6 @@ function App() {
               year={year}
               user={user}
               month={month}
-              quarter={quarter}
               onFiltersChange={handleFiltersChange}
             />
           </aside>

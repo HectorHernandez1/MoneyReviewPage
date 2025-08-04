@@ -3,9 +3,9 @@ import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:8000';
 
-const FilterPanel = ({ period, year, user, month, quarter, onFiltersChange }) => {
+const FilterPanel = ({ period, year, user, month, onFiltersChange }) => {
   const [users, setUsers] = useState([]);
-  const [periods, setPeriods] = useState({ years: [], months: [], quarters: [] });
+  const [periods, setPeriods] = useState({ years: [], months: [] });
   const [loading, setLoading] = useState(true);
   const hasInitialized = useRef(false);
   
@@ -14,7 +14,6 @@ const FilterPanel = ({ period, year, user, month, quarter, onFiltersChange }) =>
   const [pendingYear, setPendingYear] = useState(year);
   const [pendingUser, setPendingUser] = useState(user);
   const [pendingMonth, setPendingMonth] = useState(month || '');
-  const [pendingQuarter, setPendingQuarter] = useState(quarter || '');
 
   useEffect(() => {
     if (!hasInitialized.current) {
@@ -29,23 +28,20 @@ const FilterPanel = ({ period, year, user, month, quarter, onFiltersChange }) =>
     setPendingYear(year);
     setPendingUser(user);
     setPendingMonth(month || '');
-    setPendingQuarter(quarter || '');
-  }, [period, year, user, month, quarter]);
+  }, [period, year, user, month]);
 
   const handleApplyFilters = () => {
     const filters = {
       period: pendingPeriod,
       year: pendingYear,
       user: pendingUser,
-      month: pendingPeriod === 'monthly' ? pendingMonth : '',
-      quarter: pendingPeriod === 'quarterly' ? pendingQuarter : ''
+      month: pendingPeriod === 'monthly' ? pendingMonth : ''
     };
     onFiltersChange(filters);
   };
 
   const hasChanges = pendingPeriod !== period || pendingYear !== year || pendingUser !== user || 
-    (pendingPeriod === 'monthly' && pendingMonth !== month) || 
-    (pendingPeriod === 'quarterly' && pendingQuarter !== quarter);
+    (pendingPeriod === 'monthly' && pendingMonth !== month);
 
   const fetchStaticData = async () => {
     try {
@@ -59,9 +55,6 @@ const FilterPanel = ({ period, year, user, month, quarter, onFiltersChange }) =>
       
       if (!pendingMonth && periodsRes.data.months?.length > 0) {
         setPendingMonth(periodsRes.data.months[0].value);
-      }
-      if (!pendingQuarter && periodsRes.data.quarters?.length > 0) {
-        setPendingQuarter(periodsRes.data.quarters[0].value);
       }
     } catch (error) {
       console.error('Error fetching static data:', error);
@@ -102,7 +95,6 @@ const FilterPanel = ({ period, year, user, month, quarter, onFiltersChange }) =>
           onChange={(e) => setPendingPeriod(e.target.value)}
         >
           <option value="monthly">Monthly</option>
-          <option value="quarterly">Quarterly</option>
           <option value="ytd">Year to Date</option>
         </select>
       </div>
@@ -125,23 +117,6 @@ const FilterPanel = ({ period, year, user, month, quarter, onFiltersChange }) =>
         </div>
       )}
 
-      {/* Show quarter selector when Quarterly is selected */}
-      {pendingPeriod === 'quarterly' && (
-        <div className="filter-group">
-          <label htmlFor="quarter-select">Quarter</label>
-          <select 
-            id="quarter-select"
-            value={pendingQuarter} 
-            onChange={(e) => setPendingQuarter(e.target.value)}
-          >
-            {periods.quarters.map(quarter => (
-              <option key={quarter.value} value={quarter.value}>
-                {quarter.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
 
       {/* Only show year selector for Year to Date */}
       {pendingPeriod === 'ytd' && (
