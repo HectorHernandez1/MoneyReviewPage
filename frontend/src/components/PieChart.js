@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
+import { getCategoryColor } from '../utils/colors';
 
 const PieChart = ({ data, onCategoryClick }) => {
   const svgRef = useRef();
@@ -28,38 +29,7 @@ const PieChart = ({ data, onCategoryClick }) => {
       .append("g")
       .attr("transform", `translate(${chartWidth / 2},${height / 2})`);
 
-    const color = d3.scaleOrdinal([
-      '#ff6b6b', // Bright Red
-      '#4ecdc4', // Teal
-      '#45b7d1', // Sky Blue  
-      '#f9ca24', // Golden Yellow
-      '#6c5ce7', // Purple
-      '#fd79a8', // Pink
-      '#00b894', // Green
-      '#fdcb6e', // Orange
-      '#e17055', // Coral
-      '#74b9ff', // Light Blue
-      '#a29bfe', // Lavender
-      '#ff9ff3', // Hot Pink
-      '#00cec9', // Cyan
-      '#55a3ff', // Blue
-      '#ff7675', // Salmon
-      '#26de81', // Mint Green
-      '#ffa726', // Deep Orange
-      '#9c88ff', // Violet
-      '#ff9ff3', // Magenta
-      '#54a0ff', // Bright Blue
-      '#5f27cd', // Deep Purple
-      '#00d2d3', // Turquoise
-      '#ff9f43', // Bright Orange
-      '#ee5a6f', // Rose
-      '#0abde3', // Electric Blue
-      '#10ac84', // Emerald
-      '#f368e0', // Fuchsia
-      '#ff6348', // Tomato
-      '#7bed9f', // Light Green
-      '#70a1ff'  // Periwinkle
-    ]);
+    // Use consistent color mapping based on category names
 
     const pie = d3.pie()
       .value(d => d.total_amount)
@@ -80,7 +50,7 @@ const PieChart = ({ data, onCategoryClick }) => {
 
     const paths = arcs.append("path")
       .attr("d", path)
-      .attr("fill", d => color(d.data.spending_category))
+      .attr("fill", d => getCategoryColor(d.data.spending_category))
       .attr("stroke", "#1a202c")
       .attr("stroke-width", 3)
       .style("cursor", "pointer")
@@ -112,7 +82,7 @@ const PieChart = ({ data, onCategoryClick }) => {
     legendItems.append("rect")
       .attr("width", 18)
       .attr("height", 18)
-      .attr("fill", d => color(d.spending_category));
+      .attr("fill", d => getCategoryColor(d.spending_category));
 
     legendItems.append("text")
       .attr("x", 25)
