@@ -37,6 +37,10 @@ function App() {
       setYear(filters.year);
       setUser(filters.user);
       setMonth(filters.month || '');
+      
+      // Clear selected category and transaction table data to prevent stale data
+      setSelectedCategory(null);
+      setCategoryTransactions([]);
     });
   };
 
