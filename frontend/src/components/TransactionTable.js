@@ -1,6 +1,10 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 
 const TransactionTable = ({ transactions, category, onClose }) => {
+  // Sorting state - default to amount descending
+  const [sortField, setSortField] = useState('amount');
+  const [sortDirection, setSortDirection] = useState('desc');
+
   if (!transactions || transactions.length === 0) {
     return (
       <div className="transaction-table-container">
@@ -31,6 +35,49 @@ const TransactionTable = ({ transactions, category, onClose }) => {
     }).format(Math.abs(amount));
   };
 
+  // Handle column header clicks for sorting
+  const handleSort = (field) => {
+    if (sortField === field) {
+      // If clicking the same field, toggle direction
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // If clicking a new field, set to descending by default
+      setSortField(field);
+      setSortDirection('desc');
+    }
+  };
+
+  // Sort transactions based on current sort field and direction
+  const sortedTransactions = useMemo(() => {
+    const sorted = [...transactions].sort((a, b) => {
+      let aValue, bValue;
+      
+      if (sortField === 'amount') {
+        aValue = Math.abs(a.amount);
+        bValue = Math.abs(b.amount);
+      } else if (sortField === 'date') {
+        aValue = new Date(a.transaction_date);
+        bValue = new Date(b.transaction_date);
+      } else {
+        return 0; // No sorting for other fields
+      }
+      
+      if (sortDirection === 'desc') {
+        return bValue > aValue ? 1 : bValue < aValue ? -1 : 0;
+      } else {
+        return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+      }
+    });
+    
+    return sorted;
+  }, [transactions, sortField, sortDirection]);
+
+  // Get sort indicator for column headers
+  const getSortIndicator = (field) => {
+    if (sortField !== field) return ' ↕️';
+    return sortDirection === 'desc' ? ' ↓' : ' ↑';
+  };
+
   return (
     <div className="transaction-table-container">
       <div className="transaction-table-header">
@@ -42,16 +89,28 @@ const TransactionTable = ({ transactions, category, onClose }) => {
         <table className="transaction-table">
           <thead>
             <tr>
-              <th>Date</th>
+              <th 
+                className="sortable" 
+                onClick={() => handleSort('date')}
+                title="Click to sort by date"
+              >
+                Date{getSortIndicator('date')}
+              </th>
               <th>Merchant</th>
               <th>Category</th>
               <th>Person</th>
               <th>Account</th>
-              <th>Amount</th>
+              <th 
+                className="sortable" 
+                onClick={() => handleSort('amount')}
+                title="Click to sort by amount"
+              >
+                Amount{getSortIndicator('amount')}
+              </th>
             </tr>
           </thead>
           <tbody>
-            {transactions.map((transaction, index) => (
+            {sortedTransactions.map((transaction, index) => (
               <tr key={index}>
                 <td>{formatDate(transaction.transaction_date)}</td>
                 <td className="merchant">{transaction.merchant_name || 'Unknown'}</td>
