@@ -53,8 +53,8 @@ const LineChart = ({ data, period }) => {
           label: dateStr
         }));
 
-      } else if (period === 'quarterly') {
-        // Group by month for quarterly view
+      } else {
+        // Group by month for yearly view
         const monthlyData = d3.rollup(
           data,
           v => d3.sum(v, d => Math.abs(d.amount)),
@@ -73,32 +73,6 @@ const LineChart = ({ data, period }) => {
           amount: amount,
           label: monthStr
         }));
-
-      } else {
-        // Group by quarter for yearly view
-        const quarterlyData = d3.rollup(
-          data,
-          v => d3.sum(v, d => Math.abs(d.amount)),
-          d => {
-            let dateStr = d.transaction_date;
-            if (typeof dateStr === 'string') {
-              dateStr = dateStr.split('T')[0];
-            }
-            const date = new Date(dateStr);
-            const quarter = Math.floor(date.getMonth() / 3) + 1;
-            return `${date.getFullYear()}-Q${quarter}`;
-          }
-        );
-        
-        processedData = Array.from(quarterlyData, ([quarterStr, amount]) => {
-          const [year, q] = quarterStr.split('-Q');
-          const quarterMonth = (parseInt(q) - 1) * 3;
-          return {
-            date: new Date(parseInt(year), quarterMonth, 1),
-            amount: amount,
-            label: quarterStr
-          };
-        });
       }
 
       // Sort by date
@@ -133,7 +107,7 @@ const LineChart = ({ data, period }) => {
 
       // Vertical grid lines
       g.selectAll("line.vertical-grid")
-        .data(xScale.ticks(period === 'monthly' ? 5 : period === 'quarterly' ? 4 : 4))
+        .data(xScale.ticks(period === 'monthly' ? 5 : 6))
         .enter()
         .append("line")
         .attr("class", "vertical-grid")
@@ -241,16 +215,10 @@ const LineChart = ({ data, period }) => {
       if (period === 'monthly') {
         xAxisFormat = d3.timeFormat("%m/%d");
         tickCount = Math.min(processedData.length, 10); // Limit to 10 ticks max
-      } else if (period === 'quarterly') {
-        xAxisFormat = d3.timeFormat("%b %Y");
-        tickCount = Math.min(processedData.length, 6); // Limit to 6 months max
       } else {
-        // For yearly, use custom formatting to show Q1, Q2, etc.
-        xAxisFormat = (d) => {
-          const quarter = Math.floor(d.getMonth() / 3) + 1;
-          return `Q${quarter} ${d.getFullYear()}`;
-        };
-        tickCount = processedData.length; // Show all quarters
+        // For yearly, show months
+        xAxisFormat = d3.timeFormat("%b %Y");
+        tickCount = Math.min(processedData.length, 12); // Show up to 12 months
       }
 
       g.append("g")
