@@ -12,7 +12,7 @@ const SummaryCards = ({ summary }) => {
     switch(period) {
       case 'monthly': return 'This Month';
       case 'quarterly': return 'This Quarter';
-      case 'ytd': return 'Year to Date';
+      case 'yearly': return 'Yearly';
       default: return period;
     }
   };

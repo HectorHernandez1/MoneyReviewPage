@@ -95,7 +95,7 @@ const FilterPanel = ({ period, year, user, month, onFiltersChange }) => {
           onChange={(e) => setPendingPeriod(e.target.value)}
         >
           <option value="monthly">Monthly</option>
-          <option value="ytd">Year to Date</option>
+          <option value="yearly">Yearly</option>
         </select>
       </div>
 
@@ -118,8 +118,8 @@ const FilterPanel = ({ period, year, user, month, onFiltersChange }) => {
       )}
 
 
-      {/* Only show year selector for Year to Date */}
-      {pendingPeriod === 'ytd' && (
+      {/* Only show year selector for Yearly */}
+      {pendingPeriod === 'yearly' && (
         <div className="filter-group">
           <label htmlFor="year-select">Year</label>
           <select 

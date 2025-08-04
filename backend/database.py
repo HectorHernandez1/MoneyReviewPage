@@ -26,8 +26,8 @@ async def get_transactions_data(
     
     Args:
         user: Filter by specific user/person (None for all users)
-        period: 'monthly', 'ytd', or 'yearly'
-        year: Specific year (for ytd or yearly periods)
+        period: 'monthly' or 'yearly'
+        year: Specific year (for yearly periods)
         month: Specific month in YYYY-MM format (for monthly period)
     
     Default behavior: Returns current month data if no parameters provided
@@ -63,7 +63,7 @@ async def get_transactions_data(
         params.extend([int(year_val), int(month_val)])
         
         
-    elif period == 'ytd' and year:
+    elif period == 'yearly' and year:
         conditions.append("EXTRACT(YEAR FROM transaction_date) = %s")
         params.append(int(year))
         

@@ -21,7 +21,7 @@ const Dashboard = ({
     switch(period) {
       case 'monthly': return 'Daily';
       case 'quarterly': return 'Monthly'; 
-      case 'ytd': return 'Quarterly';
+      case 'yearly': return 'Monthly';
       default: return 'Time';
     }
   };

@@ -50,7 +50,7 @@ function App() {
       
       if (period === 'monthly' && month) {
         params.append('month', month);
-      } else if (period === 'ytd' && year) {
+      } else if (period === 'yearly' && year) {
         params.append('year', year);
       }
       
@@ -81,7 +81,7 @@ function App() {
       
       if (period === 'monthly' && month) {
         params.append('month', month);
-      } else if (period === 'ytd' && year) {
+      } else if (period === 'yearly' && year) {
         params.append('year', year);
       }
       

@@ -28,7 +28,7 @@ async def get_transactions(
 ):
     """
     Get transaction data aggregated by period
-    period: 'monthly', 'ytd'
+    period: 'monthly', 'yearly'
     month: 'YYYY-MM' format for specific month
     """
     # Get filtered data directly from database
@@ -48,9 +48,9 @@ async def get_transactions(
     if period == "monthly" and month:
         year_val, month_val = month.split('-')
         current_period_info = pd.to_datetime(f"{year_val}-{month_val}-01").strftime("%B %Y")
-    elif period == "ytd":
+    elif period == "yearly":
         current_year = year or datetime.now().year
-        current_period_info = f"{current_year}-YTD"
+        current_period_info = f"{current_year}"
     else:
         # Default: current month
         current_period_info = datetime.now().strftime("%B %Y")
