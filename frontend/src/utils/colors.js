@@ -1,48 +1,59 @@
 // Shared color utility for consistent coloring across all charts
+// High-contrast colors that are easily distinguishable
 export const CHART_COLORS = [
-  '#ff6b6b', // Bright Red
-  '#4ecdc4', // Teal
-  '#45b7d1', // Sky Blue  
-  '#f9ca24', // Golden Yellow
-  '#6c5ce7', // Purple
-  '#fd79a8', // Pink
-  '#00b894', // Green
-  '#fdcb6e', // Orange
-  '#e17055', // Coral
-  '#74b9ff', // Light Blue
-  '#a29bfe', // Lavender
-  '#ff9ff3', // Hot Pink
-  '#00cec9', // Cyan
-  '#55a3ff', // Blue
-  '#ff7675', // Salmon
-  '#26de81', // Mint Green
-  '#ffa726', // Deep Orange
-  '#9c88ff', // Violet
-  '#ff9ff3', // Magenta
-  '#54a0ff', // Bright Blue
-  '#5f27cd', // Deep Purple
-  '#00d2d3', // Turquoise
-  '#ff9f43', // Bright Orange
-  '#ee5a6f', // Rose
-  '#0abde3', // Electric Blue
-  '#10ac84', // Emerald
-  '#f368e0', // Fuchsia
-  '#ff6348', // Tomato
-  '#7bed9f', // Light Green
-  '#70a1ff'  // Periwinkle
+  '#1f77b4', // Blue (D3 Category10)
+  '#ff7f0e', // Orange
+  '#2ca02c', // Green
+  '#d62728', // Red
+  '#9467bd', // Purple
+  '#8c564b', // Brown
+  '#e377c2', // Pink
+  '#7f7f7f', // Gray
+  '#bcbd22', // Olive
+  '#17becf', // Cyan
+  '#aec7e8', // Light Blue
+  '#ffbb78', // Light Orange
+  '#98df8a', // Light Green
+  '#ff9896', // Light Red
+  '#c5b0d5', // Light Purple
+  '#c49c94', // Light Brown
+  '#f7b6d3', // Light Pink
+  '#c7c7c7', // Light Gray
+  '#dbdb8d', // Light Olive
+  '#9edae5', // Light Cyan
+  '#393b79', // Dark Blue (Tableau Classic)
+  '#637939', // Dark Green
+  '#8c6d31', // Dark Brown
+  '#843c39', // Dark Red
+  '#7b4173', // Dark Purple
+  '#5254a3', // Slate Blue
+  '#8ca252', // Sage Green
+  '#bd9e39', // Gold
+  '#ad494a', // Brick Red
+  '#a55194'  // Plum
 ];
 
-// Create a consistent color mapping function
+// Store category-to-color mapping to ensure uniqueness
+const categoryColorMap = new Map();
+let nextColorIndex = 0;
+
+// Create a consistent color mapping function that guarantees unique colors
 export const getCategoryColor = (category) => {
-  // Create a simple hash of the category name to ensure consistency
-  let hash = 0;
-  for (let i = 0; i < category.length; i++) {
-    const char = category.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32-bit integer
+  // If we've already assigned a color to this category, return it
+  if (categoryColorMap.has(category)) {
+    return categoryColorMap.get(category);
   }
   
-  // Use absolute value and modulo to get a consistent index
-  const colorIndex = Math.abs(hash) % CHART_COLORS.length;
-  return CHART_COLORS[colorIndex];
+  // Assign the next available color
+  const color = CHART_COLORS[nextColorIndex % CHART_COLORS.length];
+  categoryColorMap.set(category, color);
+  nextColorIndex++;
+  
+  return color;
+};
+
+// Optional: Reset function for testing or if needed
+export const resetCategoryColors = () => {
+  categoryColorMap.clear();
+  nextColorIndex = 0;
 };
