@@ -42,14 +42,24 @@ log_info "Creating directory structure..."
 sudo mkdir -p $DEPLOY_DIR/{frontend,backend,logs,database}
 sudo chown -R hector:hector /var/www/sites/
 
-# Step 2: Copy files from staging
-log_info "Copying files from staging..."
-if [ -d "$STAGING_DIR" ]; then
-    cp -r $STAGING_DIR/* $DEPLOY_DIR/
+# Step 2: Check if we're already in the right directory or copy from staging
+if [ "$PWD" = "$DEPLOY_DIR" ]; then
+    log_info "Already in deployment directory, skipping file copy..."
 else
-    log_error "Staging directory $STAGING_DIR not found!"
-    log_info "Please copy your project files to $STAGING_DIR first"
-    exit 1
+    log_info "Copying files from staging..."
+    if [ -d "$STAGING_DIR" ]; then
+        cp -r $STAGING_DIR/* $DEPLOY_DIR/
+    else
+        # Try to find project files in current directory
+        if [ -f "run-backend.sh" ] && [ -d "backend" ] && [ -d "frontend" ]; then
+            log_info "Found project files in current directory, copying to $DEPLOY_DIR..."
+            cp -r ./* $DEPLOY_DIR/
+        else
+            log_error "Project files not found!"
+            log_info "Please run this script from the project directory or copy files to $STAGING_DIR first"
+            exit 1
+        fi
+    fi
 fi
 
 # Step 3: Setup backend
