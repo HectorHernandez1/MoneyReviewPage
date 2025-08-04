@@ -11,7 +11,6 @@ const SummaryCards = ({ summary }) => {
   const getPeriodLabel = (period) => {
     switch(period) {
       case 'monthly': return 'This Month';
-      case 'quarterly': return 'This Quarter';
       case 'yearly': return 'Yearly';
       default: return period;
     }

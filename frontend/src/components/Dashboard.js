@@ -20,7 +20,6 @@ const Dashboard = ({
   const getTimeframeName = () => {
     switch(period) {
       case 'monthly': return 'Daily';
-      case 'quarterly': return 'Monthly'; 
       case 'yearly': return 'Monthly';
       default: return 'Time';
     }
