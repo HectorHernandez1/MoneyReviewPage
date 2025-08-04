@@ -109,7 +109,7 @@ log_info "Creating build environment..."
 echo "ESLINT_NO_DEV_ERRORS=true" > .env.local
 echo "GENERATE_SOURCEMAP=false" >> .env.local
 
-# Build production version
+# Build production version with correct base path
 log_info "Building frontend for production..."
 CI=false npm run build
 
