@@ -5,7 +5,7 @@ import Dashboard from './components/Dashboard';
 import FilterPanel from './components/FilterPanel';
 import './App.css';
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/budget/api' : 'http://localhost:8000';
 
 function App() {
   const [transactions, setTransactions] = useState([]);
