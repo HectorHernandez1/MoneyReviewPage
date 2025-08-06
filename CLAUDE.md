@@ -141,18 +141,37 @@ server {
     location /budget {
         alias /var/www/sites/budget/frontend/build;
         try_files $uri $uri/ /budget/index.html;
+        
+        # Add headers for better caching
+        location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+        }
     }
 
-    # Proxy API requests to backend
-    location /budget/api {
-        proxy_pass http://localhost:8000;
+    # Proxy API requests to backend - CRITICAL: trailing slash required!
+    location /budget/api/ {
+        proxy_pass http://localhost:8000/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_Set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # Handle CORS
+        add_header Access-Control-Allow-Origin *;
+        add_header Access-Control-Allow-Methods "GET, POST, OPTIONS";
+        add_header Access-Control-Allow-Headers "Content-Type, Authorization";
+    }
+
+    # Health check endpoint
+    location /budget/health {
+        proxy_pass http://localhost:8000/health;
+        proxy_set_header Host $host;
     }
 }
 ```
+
+**⚠️ CRITICAL**: The trailing slashes in `location /budget/api/` and `proxy_pass http://localhost:8000/;` are required to strip the `/budget/api/` prefix before forwarding requests to the backend.
 
 Enable the site:
 ```bash
@@ -200,17 +219,51 @@ sudo systemctl reload nginx
    sudo chown -R hector:hector /var/www/sites/budget/
    ```
 
+5. **API Not Loading Data (Frontend shows default values)**
+   ```bash
+   # Check if backend is running
+   pm2 status
+   
+   # Test backend directly
+   curl http://localhost:8000/transactions
+   
+   # Test nginx proxy (should match above)
+   curl http://localhost/budget/api/transactions
+   
+   # If nginx proxy fails, check trailing slashes in nginx config
+   sudo nano /etc/nginx/sites-available/budget
+   # Ensure: location /budget/api/ { proxy_pass http://localhost:8000/; }
+   sudo nginx -t && sudo systemctl reload nginx
+   ```
+
+6. **Frontend API Configuration Issues**
+   ```bash
+   # Frontend must use environment-aware API URLs
+   # Check App.js and FilterPanel.js contain:
+   # const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/budget/api' : 'http://localhost:8000';
+   
+   # After fixing, rebuild frontend:
+   cd /var/www/sites/budget/frontend/
+   CI=false npm run build
+   ```
+
 ### Development Commands
 ```bash
-# Update from git
-cd ~/deployment/budget/
+# Update from git and redeploy
+cd /var/www/sites/budget/
 git pull
-cp -r frontend/* /var/www/sites/budget/frontend/
-cp -r backend/* /var/www/sites/budget/backend/
+
+# Rebuild frontend (important for API config changes)
+cd frontend/
+CI=false npm run build
+cd ..
 
 # Restart services
 pm2 restart budget-backend
 sudo systemctl reload nginx
+
+# Verify API is working
+curl -I http://localhost/budget/api/transactions
 
 # View logs
 pm2 logs budget-backend
@@ -219,11 +272,12 @@ tail -f /var/www/sites/budget/logs/app.log
 
 ## Deployment Status
 
-### Current Status (August 4, 2025)
+### Current Status (August 6, 2025)
 ✅ **Server Setup**: Complete  
 ✅ **Backend**: Running on port 8000 with PM2  
-✅ **Frontend**: Built with `/budget` base path  
-✅ **Nginx**: Configured and serving on port 80  
+✅ **Frontend**: Built with `/budget` base path and API configuration  
+✅ **Nginx**: Configured with proper API proxy routing  
+✅ **API Connection**: Working - frontend loads real data  
 ✅ **Network Access**: Working in Safari  
 ⚠️ **Chrome Browser**: Blocked by security settings  
 
@@ -326,6 +380,7 @@ Your Money Review Page is **successfully deployed** and accessible at:
 **Working browsers**: Safari, Firefox  
 **Issue**: Chrome security blocking (use Safari for now)
 
-**Next session**: Fix Chrome access or continue using Safari
+**Status**: ✅ WORKING - API connected, data loading properly
+**Chrome Issue**: Use Safari/Firefox or disable Chrome security flags
 
-Last Updated: August 4, 2025
+Last Updated: August 6, 2025
