@@ -1,6 +1,13 @@
 import React, { useState, useMemo } from 'react';
 
-const TransactionTable = ({ transactions, category, onClose }) => {
+const currencyFormatter = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD'
+});
+
+const formatCurrency = (amount = 0) => currencyFormatter.format(Math.abs(amount));
+
+const TransactionTable = ({ transactions, category, onClose, limitInfo }) => {
   const [sortField, setSortField] = useState('amount');
   const [sortDirection, setSortDirection] = useState('desc');
 
@@ -38,6 +45,59 @@ const TransactionTable = ({ transactions, category, onClose }) => {
     }, 0);
   }, [transactions]);
 
+  const summaryText = transactions && transactions.length > 0
+    ? ` (${transactions.length} transactions, ${formatCurrency(totalAmount)} total)`
+    : '';
+
+  const limitDetails = useMemo(() => {
+    if (!limitInfo) return null;
+
+    const monthsMultiplier = Math.max(1, limitInfo.months_multiplier || 1);
+    const monthLabel = monthsMultiplier === 1 ? 'month' : 'months';
+    const baseLimit = typeof limitInfo.base_limit === 'number' ? limitInfo.base_limit : null;
+    const totalSpent = typeof limitInfo.total_spent === 'number' ? limitInfo.total_spent : totalAmount;
+    const effectiveLimit = typeof limitInfo.effective_limit === 'number'
+      ? limitInfo.effective_limit
+      : baseLimit !== null
+        ? baseLimit * monthsMultiplier
+        : null;
+
+    let difference = typeof limitInfo.difference === 'number' ? limitInfo.difference : null;
+    if (difference === null && effectiveLimit !== null) {
+      difference = effectiveLimit - totalSpent;
+    }
+
+    if (baseLimit === null || effectiveLimit === null || difference === null) {
+      return {
+        status: 'no-limit',
+        delta: 'No limit set',
+        meta: null
+      };
+    }
+
+    const nearLimit = Math.abs(difference) < 0.01;
+    let status = 'at-limit';
+    let deltaText = 'At limit';
+
+    if (!nearLimit) {
+      if (difference > 0) {
+        status = 'under';
+        deltaText = `Under limit by ${formatCurrency(difference)}`;
+      } else {
+        status = 'over';
+        deltaText = `Over limit by ${formatCurrency(Math.abs(difference))}`;
+      }
+    }
+
+    const metaText = `Limit ${formatCurrency(baseLimit)} × ${monthsMultiplier} ${monthLabel} = ${formatCurrency(effectiveLimit)}`;
+
+    return {
+      status,
+      delta: deltaText,
+      meta: metaText
+    };
+  }, [limitInfo, totalAmount]);
+
   const handleSort = (field) => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -56,25 +116,36 @@ const TransactionTable = ({ transactions, category, onClose }) => {
     });
   };
 
-  const formatAmount = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(Math.abs(amount));
-  };
-
   const getSortIndicator = (field) => {
     if (sortField !== field) return ' ↕️';
     return sortDirection === 'desc' ? ' ↓' : ' ↑';
   };
 
+  const renderHeader = () => (
+    <div className="transaction-table-header">
+      <div className="transaction-table-title">
+        <div className="transaction-table-title-row">
+          <h3>Transactions for "{category}"{summaryText}</h3>
+          {limitDetails && limitDetails.delta && (
+            <span className={`transaction-limit-delta ${limitDetails.status}`}>
+              {limitDetails.delta}
+            </span>
+          )}
+        </div>
+        {limitDetails && limitDetails.meta && (
+          <div className={`transaction-limit-meta ${limitDetails.status}`}>
+            {limitDetails.meta}
+          </div>
+        )}
+      </div>
+      <button className="close-button" onClick={onClose}>×</button>
+    </div>
+  );
+
   if (!transactions || transactions.length === 0) {
     return (
       <div className="transaction-table-container">
-        <div className="transaction-table-header">
-          <h3>Transactions for "{category}"</h3>
-          <button className="close-button" onClick={onClose}>×</button>
-        </div>
+        {renderHeader()}
         <div className="no-transactions">
           No transactions found for this category.
         </div>
@@ -84,12 +155,7 @@ const TransactionTable = ({ transactions, category, onClose }) => {
 
   return (
     <div className="transaction-table-container">
-      <div className="transaction-table-header">
-        <h3>
-          Transactions for "{category}" ({transactions.length} transactions, {formatAmount(totalAmount)} total)
-        </h3>
-        <button className="close-button" onClick={onClose}>×</button>
-      </div>
+      {renderHeader()}
 
       <div className="transaction-table-wrapper">
         <table className="transaction-table">
@@ -123,7 +189,7 @@ const TransactionTable = ({ transactions, category, onClose }) => {
                 <td className="category">{transaction.spending_category}</td>
                 <td className="person">{transaction.person || 'Unknown'}</td>
                 <td className="account">{transaction.account_type || 'Unknown'}</td>
-                <td className="amount">{formatAmount(transaction.amount)}</td>
+                <td className="amount">{formatCurrency(transaction.amount)}</td>
               </tr>
             ))}
           </tbody>

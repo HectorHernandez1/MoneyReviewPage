@@ -1,6 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from database import get_transactions_data, get_users_data, get_available_periods
+from database import (
+    get_transactions_data,
+    get_users_data,
+    get_available_periods,
+    get_category_limit
+)
 import pandas as pd
 from datetime import datetime
 from typing import Optional
@@ -192,6 +197,24 @@ async def get_category_transactions(
     # Sort by date descending (most recent first)
     category_df = category_df.sort_values('transaction_date', ascending=False)
     
+    # Calculate totals and limit context before serialization
+    total_spent = float(category_df['amount'].abs().sum())
+    unique_months = category_df['transaction_date'].dt.to_period('M').nunique()
+    months_multiplier = int(unique_months) if unique_months else 1
+
+    limit_value = await get_category_limit(category)
+    limit_info = {
+        "category": category,
+        "base_limit": limit_value,
+        "months_multiplier": months_multiplier,
+        "effective_limit": float(limit_value * months_multiplier) if limit_value is not None else None,
+        "total_spent": total_spent,
+        "difference": None
+    }
+
+    if limit_value is not None:
+        limit_info["difference"] = limit_info["effective_limit"] - total_spent
+
     # Convert to records with all requested columns
     transactions = category_df[[
         'amount',
@@ -207,7 +230,10 @@ async def get_category_transactions(
         transaction['transaction_date'] = transaction['transaction_date'].strftime('%Y-%m-%d')
     
     print(f"DEBUG: Returning {len(transactions)} transactions")
-    return {"transactions": transactions}
+    return {
+        "transactions": transactions,
+        "limit_info": limit_info
+    }
 
 if __name__ == "__main__":
     import uvicorn
