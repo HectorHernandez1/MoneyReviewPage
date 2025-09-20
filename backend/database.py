@@ -15,6 +15,37 @@ DB_CONFIG = {
     "options": "-c search_path=budget_app"
 }
 
+async def get_category_limit(category_name):
+    """Fetch the configured spending limit for a category."""
+    if not category_name:
+        return None
+
+    query = """
+        SELECT spending_limit
+        FROM budget_app.spending_categories
+        WHERE LOWER(category_name) = %s
+        LIMIT 1
+    """
+
+    conn = None
+    try:
+        conn = psycopg2.connect(**DB_CONFIG)
+        with conn.cursor() as cursor:
+            cursor.execute(query, (category_name.lower(),))
+            result = cursor.fetchone()
+
+        if not result:
+            return None
+
+        limit_value = result[0]
+        return float(limit_value) if limit_value is not None else None
+    except Exception as e:
+        print(f"Database error fetching limit for {category_name}: {e}")
+        return None
+    finally:
+        if conn:
+            conn.close()
+
 async def get_transactions_data(
     user=None, 
     period=None, 

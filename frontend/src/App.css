@@ -359,6 +359,69 @@
   font-weight: 600;
 }
 
+.transaction-table-title {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.transaction-table-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.transaction-table-title-row h3 {
+  margin: 0;
+}
+
+.transaction-limit-delta {
+  margin-left: auto;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #f3f4f6;
+  text-align: right;
+}
+
+.transaction-limit-delta.under {
+  color: #34d399;
+}
+
+.transaction-limit-delta.over {
+  color: #f87171;
+}
+
+.transaction-limit-delta.at-limit {
+  color: #fbbf24;
+}
+
+.transaction-limit-delta.no-limit {
+  color: #9ca3af;
+}
+
+.transaction-limit-meta {
+  font-size: 0.85rem;
+  color: #9ca3af;
+  text-align: right;
+}
+
+.transaction-limit-meta.under {
+  color: #6ee7b7;
+}
+
+.transaction-limit-meta.over {
+  color: #fca5a5;
+}
+
+.transaction-limit-meta.at-limit {
+  color: #fbbf24;
+}
+
+.transaction-limit-meta.no-limit {
+  color: #9ca3af;
+}
+
 .close-button {
   background: none;
   border: none;

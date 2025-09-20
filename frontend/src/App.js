@@ -20,6 +20,7 @@ function App() {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [categoryTransactions, setCategoryTransactions] = useState([]);
   const [loadingTransactions, setLoadingTransactions] = useState(false);
+  const [categoryLimitInfo, setCategoryLimitInfo] = useState(null);
   const fetchInProgress = useRef(false);
 
   useEffect(() => {
@@ -41,6 +42,7 @@ function App() {
       // Clear selected category and transaction table data to prevent stale data
       setSelectedCategory(null);
       setCategoryTransactions([]);
+      setCategoryLimitInfo(null);
     });
   };
 
@@ -76,6 +78,7 @@ function App() {
 
   const fetchCategoryTransactions = async (category) => {
     setLoadingTransactions(true);
+    setCategoryLimitInfo(null);
     try {
       const params = new URLSearchParams({
         category,
@@ -91,6 +94,7 @@ function App() {
       
       const response = await axios.get(`${API_BASE_URL}/category-transactions?${params.toString()}`);
       setCategoryTransactions(response.data.transactions || []);
+      setCategoryLimitInfo(response.data.limit_info || null);
       setSelectedCategory(category);
     } catch (error) {
       console.error('Error fetching category transactions:', error);
@@ -98,6 +102,7 @@ function App() {
       // For any error, show empty state
       setCategoryTransactions([]);
       setSelectedCategory(category);
+      setCategoryLimitInfo(null);
     }
     setLoadingTransactions(false);
   };
@@ -109,6 +114,7 @@ function App() {
   const handleCloseTransactionTable = () => {
     setSelectedCategory(null);
     setCategoryTransactions([]);
+    setCategoryLimitInfo(null);
   };
 
   return (
@@ -151,6 +157,7 @@ function App() {
                   categoryTransactions={categoryTransactions}
                   loadingTransactions={loadingTransactions}
                   onCloseTransactionTable={handleCloseTransactionTable}
+                  categoryLimitInfo={categoryLimitInfo}
                 />
               </>
             )}
