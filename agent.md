@@ -14,6 +14,29 @@ This file tracks Codex automation touchpoints and the deployment context surface
 - **Verification commands**: `pm2 status`, `curl http://localhost/budget/api/transactions`, `./manage-production.sh status`, `sudo systemctl reload nginx`.
 - **Known production issue**: Chrome blocks local network requests; Safari/Firefox work or disable the `block-insecure-private-network-requests` flag.
 
+
+### quick how to deploy in prod
+```bash
+# 1. Clone repository to production directory
+ssh hector@192.168.x.x
+cd /var/www/sites/budget
+git pull
+
+# 2. Make deployment script executable
+chmod +x deploy-production.sh
+
+# 3. Run automated deployment (does everything!)
+./deploy-production.sh
+```
+
+## how to deploy locally
+```bash
+# 1. test things locally
+chmod +x run-both.sh
+./run-both.sh
+```
+
+
 ## Next Updates
 - Expand troubleshooting guidance for agent-led redeployments (permissions, DB connectivity, nginx cache).
 - Document any new automation scripts or environment changes that impact local/production parity.

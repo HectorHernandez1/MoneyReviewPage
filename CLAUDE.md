@@ -29,8 +29,9 @@
 ### Automated Deployment (Recommended)
 ```bash
 # 1. Clone repository to production directory
+ssh hector@192.168.x.x
 cd /var/www/sites/budget
-git clone git@github.com:HectorHernandez1/MoneyReviewPage.git .
+git pull
 
 # 2. Make deployment script executable
 chmod +x deploy-production.sh
