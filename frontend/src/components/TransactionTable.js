@@ -30,6 +30,14 @@ const TransactionTable = ({ transactions, category, onClose }) => {
     return sorted;
   }, [transactions, sortField, sortDirection]);
 
+  const totalAmount = useMemo(() => {
+    if (!transactions || transactions.length === 0) return 0;
+    return transactions.reduce((sum, transaction) => {
+      const amount = typeof transaction.amount === 'number' ? transaction.amount : 0;
+      return sum + Math.abs(amount);
+    }, 0);
+  }, [transactions]);
+
   const handleSort = (field) => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -77,7 +85,9 @@ const TransactionTable = ({ transactions, category, onClose }) => {
   return (
     <div className="transaction-table-container">
       <div className="transaction-table-header">
-        <h3>Transactions for "{category}" ({transactions.length} transactions)</h3>
+        <h3>
+          Transactions for "{category}" ({transactions.length} transactions, {formatAmount(totalAmount)} total)
+        </h3>
         <button className="close-button" onClick={onClose}>×</button>
       </div>
 
