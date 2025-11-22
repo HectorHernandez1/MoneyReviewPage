@@ -4,7 +4,7 @@
 # Usage: ./manage-production.sh [start|stop|restart|status|logs|update]
 
 DEPLOY_DIR="/var/www/sites/budget"
-SERVER_IP="192.168.x.x"
+SERVER_IP="hector-MacBookPro8.local"
 
 # Colors
 GREEN='\033[0;32m'

@@ -7,7 +7,7 @@ This file tracks Codex automation touchpoints and the deployment context surface
 - Provide local deployment checklist for backend (FastAPI) and frontend (React).
 
 ## Production Reference 
-- **Server**: Ubuntu 24.04.2 LTS at `192.168.x.x`, user `hector`; backend runs via PM2 (`budget-backend`) on port 8000 and is proxied by nginx at `/budget/api`.
+- **Server**: Ubuntu 24.04.2 LTS at `hector-MacBookPro8.local`, user `hector`; backend runs via PM2 (`budget-backend`) on port 8000 and is proxied by nginx at `/budget/api`.
 - **Directory layout**: `/var/www/sites/budget/{frontend,backend,logs,database}` with deployment scripts `deploy-production.sh` and `manage-production.sh` in repo root.
 - **Quick deploy**: clone repo into `/var/www/sites/budget`, `chmod +x deploy-production.sh`, then run `./deploy-production.sh`.
 - **Manual essentials**: create Python venv (`python3 -m venv venv`), install `pip install -r requirements.txt`, copy `.env.template` → `.env` with DB creds, run `CI=false npm run build` for frontend, and ensure nginx config keeps the `/budget/api/` trailing slash pair.
@@ -18,7 +18,7 @@ This file tracks Codex automation touchpoints and the deployment context surface
 ### quick how to deploy in prod
 ```bash
 # 1. Clone repository to production directory
-ssh hector@192.168.x.x
+ssh hector@hector-MacBookPro8.local
 cd /var/www/sites/budget
 git pull
 
