@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Initialize conda
+eval "$(/opt/miniconda3/bin/conda shell.bash hook)"
+conda activate budget-env
+
 # Start backend in background
 echo "Starting backend..."
 cd backend
