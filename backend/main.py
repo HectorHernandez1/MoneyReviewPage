@@ -14,7 +14,12 @@ app = FastAPI(title="Budget Data API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://hector-MacBookPro8.local",
+        "http://hector-MacBookPro8.local:3000",
+        "http://hector-MacBookPro8.local:8000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
