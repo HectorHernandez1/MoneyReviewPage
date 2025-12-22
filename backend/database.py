@@ -193,3 +193,94 @@ def test_connection():
     except Exception as e:
         print(f"Connection failed: {e}")
         return False
+
+async def get_all_categories():
+    """
+    Fetch all available spending categories from the database
+    """
+    query = """
+    SELECT category_name 
+    FROM budget_app.spending_categories 
+    ORDER BY category_name;
+    """
+    
+    try:
+        conn = psycopg2.connect(**DB_CONFIG)
+        df = pd.read_sql(query, conn)
+        conn.close()
+        return df['category_name'].tolist()
+    except Exception as e:
+        print(f"Database error: {e}")
+        return []
+
+async def update_transaction_category(
+    transaction_date,
+    merchant_name,
+    amount,
+    person,
+    new_category
+):
+    """
+    Update the spending category for a specific transaction
+    Uses composite key (date, merchant, amount, person) to identify the transaction
+    
+    Args:
+        transaction_date: Transaction date (YYYY-MM-DD format)
+        merchant_name: Merchant name
+        amount: Transaction amount
+        person: Person name who made the transaction
+        new_category: New category name to assign
+    
+    Returns:
+        True if update successful, False otherwise
+    """
+    # First, get the category_id and person_id from their names
+    lookup_query = """
+    SELECT 
+        (SELECT id FROM budget_app.spending_categories WHERE category_name = %s) as category_id,
+        (SELECT id FROM budget_app.persons WHERE name = %s) as person_id
+    """
+    
+    update_query = """
+    UPDATE budget_app.transactions
+    SET category_id = %s
+    WHERE transaction_date = %s::date
+      AND merchant_name = %s
+      AND amount = %s
+      AND person_id = %s
+    """
+    
+    conn = None
+    try:
+        conn = psycopg2.connect(**DB_CONFIG)
+        with conn.cursor() as cursor:
+            # Look up the IDs
+            cursor.execute(lookup_query, (new_category, person))
+            result = cursor.fetchone()
+            
+            if not result or result[0] is None or result[1] is None:
+                print(f"Could not find category '{new_category}' or person '{person}'")
+                return False
+            
+            category_id, person_id = result
+            
+            # Update the transaction
+            cursor.execute(update_query, (
+                category_id,
+                transaction_date,
+                merchant_name,
+                amount,
+                person_id
+            ))
+            rows_affected = cursor.rowcount
+            conn.commit()
+            
+        return rows_affected > 0
+    except Exception as e:
+        print(f"Database error updating transaction: {e}")
+        if conn:
+            conn.rollback()
+        return False
+    finally:
+        if conn:
+            conn.close()

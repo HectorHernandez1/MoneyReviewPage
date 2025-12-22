@@ -15,7 +15,8 @@ const Dashboard = ({
   categoryTransactions,
   loadingTransactions,
   onCloseTransactionTable,
-  categoryLimitInfo
+  categoryLimitInfo,
+  onTransactionUpdate
 }) => {
   const getTimeframeName = () => {
     switch (period) {
@@ -48,6 +49,7 @@ const Dashboard = ({
           category={selectedCategory}
           limitInfo={categoryLimitInfo}
           onClose={onCloseTransactionTable}
+          onTransactionUpdate={onTransactionUpdate}
         />
       )}
 

@@ -26,7 +26,7 @@ function App() {
   useEffect(() => {
     if (fetchInProgress.current) return;
     fetchInProgress.current = true;
-    
+
     fetchData().finally(() => {
       fetchInProgress.current = false;
     });
@@ -38,7 +38,7 @@ function App() {
       setYear(filters.year);
       setUser(filters.user);
       setMonth(filters.month || '');
-      
+
       // Clear selected category and transaction table data to prevent stale data
       setSelectedCategory(null);
       setCategoryTransactions([]);
@@ -53,19 +53,19 @@ function App() {
         period,
         user
       });
-      
+
       if (period === 'monthly' && month) {
         params.append('month', month);
       } else if (period === 'yearly' && year) {
         params.append('year', year);
       }
-      
+
       const [transactionsRes, categoriesRes, rawTransactionsRes] = await Promise.all([
         axios.get(`${API_BASE_URL}/transactions?${params.toString()}`),
         axios.get(`${API_BASE_URL}/categories?${params.toString()}`),
         axios.get(`${API_BASE_URL}/raw-transactions?${params.toString()}`)
       ]);
-      
+
       setTransactions(transactionsRes.data.data);
       setSummary(transactionsRes.data.summary);
       setCategories(categoriesRes.data.categories);
@@ -85,20 +85,20 @@ function App() {
         period,
         user
       });
-      
+
       if (period === 'monthly' && month) {
         params.append('month', month);
       } else if (period === 'yearly' && year) {
         params.append('year', year);
       }
-      
+
       const response = await axios.get(`${API_BASE_URL}/category-transactions?${params.toString()}`);
       setCategoryTransactions(response.data.transactions || []);
       setCategoryLimitInfo(response.data.limit_info || null);
       setSelectedCategory(category);
     } catch (error) {
       console.error('Error fetching category transactions:', error);
-      
+
       // For any error, show empty state
       setCategoryTransactions([]);
       setSelectedCategory(category);
@@ -117,6 +117,15 @@ function App() {
     setCategoryLimitInfo(null);
   };
 
+  const handleTransactionUpdate = () => {
+    // Refresh the category transactions after an update
+    if (selectedCategory) {
+      fetchCategoryTransactions(selectedCategory);
+    }
+    // Also refresh the main data to update the charts
+    fetchData();
+  };
+
   return (
     <div className="App">
       <header className="App-header">
@@ -128,11 +137,11 @@ function App() {
           </span>
         </div>
       </header>
-      
+
       <main className="App-main">
         <div className="app-layout">
           <aside className="sidebar">
-            <FilterPanel 
+            <FilterPanel
               period={period}
               year={year}
               user={user}
@@ -140,13 +149,13 @@ function App() {
               onFiltersChange={handleFiltersChange}
             />
           </aside>
-          
+
           <div className="content">
             {loading ? (
               <div className="loading">Loading...</div>
             ) : (
               <>
-                <Dashboard 
+                <Dashboard
                   transactions={transactions}
                   rawTransactions={rawTransactions}
                   categories={categories}
@@ -158,6 +167,7 @@ function App() {
                   loadingTransactions={loadingTransactions}
                   onCloseTransactionTable={handleCloseTransactionTable}
                   categoryLimitInfo={categoryLimitInfo}
+                  onTransactionUpdate={handleTransactionUpdate}
                 />
               </>
             )}
