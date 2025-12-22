@@ -7,7 +7,10 @@ from database import (
     get_available_periods,
     get_category_limit,
     get_all_categories,
-    update_transaction_category
+    update_transaction_category,
+    get_all_categories_with_limits,
+    update_category_limit,
+    add_new_category
 )
 import pandas as pd
 from datetime import datetime
@@ -274,6 +277,61 @@ async def update_category(request: CategoryUpdateRequest):
         return {"success": True, "message": "Category updated successfully"}
     else:
         raise HTTPException(status_code=404, detail="Transaction not found or update failed")
+
+@app.get("/categories-with-limits")
+async def get_categories_with_limits():
+    """
+    Get all categories with their spending limits
+    """
+    categories = await get_all_categories_with_limits()
+    return {"categories": categories}
+
+class CategoryLimitUpdateRequest(BaseModel):
+    category_name: str
+    new_limit: float
+
+@app.put("/category/limit")
+async def update_limit(request: CategoryLimitUpdateRequest):
+    """
+    Update the spending limit for a category
+    """
+    if request.new_limit < 0:
+        raise HTTPException(status_code=400, detail="Spending limit cannot be negative")
+    
+    success = await update_category_limit(
+        category_name=request.category_name,
+        new_limit=request.new_limit
+    )
+    
+    if success:
+        return {"success": True, "message": "Category limit updated successfully"}
+    else:
+        raise HTTPException(status_code=404, detail="Category not found or update failed")
+
+class NewCategoryRequest(BaseModel):
+    category_name: str
+    spending_limit: float = 0.0
+
+@app.post("/category")
+async def create_category(request: NewCategoryRequest):
+    """
+    Create a new spending category
+    """
+    if not request.category_name or not request.category_name.strip():
+        raise HTTPException(status_code=400, detail="Category name cannot be empty")
+    
+    if request.spending_limit < 0:
+        raise HTTPException(status_code=400, detail="Spending limit cannot be negative")
+    
+    success = await add_new_category(
+        category_name=request.category_name.strip(),
+        spending_limit=request.spending_limit
+    )
+    
+    if success:
+        return {"success": True, "message": "Category created successfully"}
+    else:
+        raise HTTPException(status_code=400, detail="Category already exists or creation failed")
 
 
 if __name__ == "__main__":

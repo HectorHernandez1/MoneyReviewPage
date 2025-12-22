@@ -10,7 +10,7 @@
   background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
   padding: 20px;
   color: #f7fafc;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   border-bottom: 1px solid #374151;
 }
 
@@ -47,7 +47,7 @@
   font-size: 1rem;
   color: #60a5fa;
   font-weight: 600;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .period-selector {
@@ -125,7 +125,7 @@
   background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
   padding: 24px;
   border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   border: 1px solid #374151;
   border-left: 4px solid #60a5fa;
   transition: transform 0.2s, box-shadow 0.2s;
@@ -133,7 +133,7 @@
 
 .summary-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
 }
 
 .summary-card h3 {
@@ -148,14 +148,14 @@
   font-size: 2rem;
   font-weight: bold;
   color: #f3f4f6;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .summary-card .count {
   font-size: 2rem;
   font-weight: bold;
   color: #60a5fa;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .summary-card .period {
@@ -180,7 +180,7 @@
   background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
   padding: 24px;
   border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   border: 1px solid #374151;
   overflow: visible;
   transition: transform 0.2s, box-shadow 0.2s;
@@ -188,7 +188,7 @@
 
 .chart-section:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
 }
 
 .chart-section h2 {
@@ -202,7 +202,7 @@
   background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
   padding: 24px;
   border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   border: 1px solid #374151;
   position: sticky;
   top: 20px;
@@ -211,7 +211,7 @@
 
 .filter-panel:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
 }
 
 .filter-panel h3 {
@@ -304,30 +304,30 @@
   .app-layout {
     flex-direction: column;
   }
-  
+
   .sidebar {
     width: 100%;
     order: -1;
   }
-  
+
   .filter-panel {
     position: static;
   }
-  
+
   .charts-container {
     grid-template-columns: 1fr;
   }
-  
+
   .summary-cards {
     grid-template-columns: 1fr;
   }
-  
+
   .App-header {
     flex-direction: column;
     text-align: center;
     gap: 15px;
   }
-  
+
   .user-display {
     order: -1;
   }
@@ -337,7 +337,7 @@
 .transaction-table-container {
   background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
   border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   border: 1px solid #374151;
   margin-top: 20px;
   overflow: hidden;
@@ -596,6 +596,7 @@
     opacity: 0;
     transform: translateY(-20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -770,4 +771,286 @@
 .cancel-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Header actions */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.manage-categories-btn {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(96, 165, 250, 0.3);
+}
+
+.manage-categories-btn:hover {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  box-shadow: 0 6px 16px rgba(96, 165, 250, 0.4);
+  transform: translateY(-1px);
+}
+
+/* Category Management Overlay */
+.category-management-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.category-management-container {
+  background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  border: 1px solid #374151;
+  width: 90%;
+  max-width: 900px;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+.category-management-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #374151;
+  background: linear-gradient(135deg, #2d3748 0%, #374151 100%);
+  border-radius: 12px 12px 0 0;
+}
+
+.category-management-header h2 {
+  margin: 0;
+  color: #f3f4f6;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.category-management-body {
+  padding: 24px;
+}
+
+/* Category Table */
+.category-table-wrapper {
+  overflow-x: auto;
+  margin-bottom: 24px;
+}
+
+.category-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.category-table thead {
+  background: #374151;
+}
+
+.category-table th {
+  color: #e5e7eb;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid #4b5563;
+}
+
+.category-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #374151;
+  color: #d1d5db;
+  font-size: 0.95rem;
+}
+
+.category-table tr:hover {
+  background: rgba(96, 165, 250, 0.05);
+}
+
+.category-name {
+  font-weight: 500;
+  color: #f3f4f6;
+}
+
+.category-limit {
+  color: #60a5fa;
+  font-weight: 600;
+}
+
+.limit-input {
+  width: 150px;
+  padding: 6px 10px;
+  border: 1px solid #60a5fa;
+  border-radius: 4px;
+  background: #374151;
+  color: #e5e7eb;
+  font-size: 0.95rem;
+}
+
+.limit-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
+}
+
+.category-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.edit-btn,
+.save-btn,
+.cancel-btn {
+  padding: 6px 16px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.edit-btn {
+  background: #60a5fa;
+  color: white;
+}
+
+.edit-btn:hover {
+  background: #3b82f6;
+}
+
+.save-btn {
+  background: #34d399;
+  color: white;
+}
+
+.save-btn:hover {
+  background: #10b981;
+}
+
+.cancel-btn {
+  background: #374151;
+  color: #d1d5db;
+  border: 1px solid #4a5568;
+}
+
+.cancel-btn:hover {
+  background: #4b5563;
+}
+
+/* Add Category Section */
+.add-category-section {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #374151;
+}
+
+.add-category-btn {
+  width: 100%;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(96, 165, 250, 0.3);
+}
+
+.add-category-btn:hover {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  box-shadow: 0 6px 16px rgba(96, 165, 250, 0.4);
+  transform: translateY(-1px);
+}
+
+.add-category-form {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 20px;
+  border: 1px solid #374151;
+}
+
+.add-category-form h3 {
+  margin: 0 0 16px 0;
+  color: #f3f4f6;
+  font-size: 1.1rem;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 6px;
+  color: #d1d5db;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #4a5568;
+  border-radius: 6px;
+  background: #374151;
+  color: #e5e7eb;
+  font-size: 1rem;
+  transition: all 0.2s;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
+  background: #4b5563;
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.submit-btn {
+  flex: 1;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.submit-btn:hover {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  transform: translateY(-1px);
+}
+
+.form-actions .cancel-btn {
+  flex: 1;
+  padding: 10px 20px;
+  font-size: 1rem;
 }

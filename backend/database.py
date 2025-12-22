@@ -284,3 +284,91 @@ async def update_transaction_category(
     finally:
         if conn:
             conn.close()
+
+async def get_all_categories_with_limits():
+    """
+    Fetch all categories with their spending limits
+    Returns list of dicts with category_name and spending_limit
+    """
+    query = """
+    SELECT category_name, spending_limit
+    FROM budget_app.spending_categories
+    ORDER BY category_name;
+    """
+    
+    try:
+        conn = psycopg2.connect(**DB_CONFIG)
+        df = pd.read_sql(query, conn)
+        conn.close()
+        return df.to_dict('records')
+    except Exception as e:
+        print(f"Database error: {e}")
+        return []
+
+async def update_category_limit(category_name, new_limit):
+    """
+    Update the spending limit for a category
+    
+    Args:
+        category_name: Name of the category to update
+        new_limit: New spending limit value
+    
+    Returns:
+        True if update successful, False otherwise
+    """
+    query = """
+    UPDATE budget_app.spending_categories
+    SET spending_limit = %s
+    WHERE category_name = %s
+    """
+    
+    conn = None
+    try:
+        conn = psycopg2.connect(**DB_CONFIG)
+        with conn.cursor() as cursor:
+            cursor.execute(query, (new_limit, category_name))
+            rows_affected = cursor.rowcount
+            conn.commit()
+            
+        return rows_affected > 0
+    except Exception as e:
+        print(f"Database error updating category limit: {e}")
+        if conn:
+            conn.rollback()
+        return False
+    finally:
+        if conn:
+            conn.close()
+
+async def add_new_category(category_name, spending_limit=0.0):
+    """
+    Add a new spending category
+    
+    Args:
+        category_name: Name of the new category
+        spending_limit: Initial spending limit (default 0.0)
+    
+    Returns:
+        True if category added successfully, False otherwise
+    """
+    query = """
+    INSERT INTO budget_app.spending_categories (category_name, spending_limit)
+    VALUES (%s, %s)
+    """
+    
+    conn = None
+    try:
+        conn = psycopg2.connect(**DB_CONFIG)
+        with conn.cursor() as cursor:
+            cursor.execute(query, (category_name, spending_limit))
+            conn.commit()
+            
+        return True
+    except Exception as e:
+        print(f"Database error adding category: {e}")
+        if conn:
+            conn.rollback()
+        return False
+    finally:
+        if conn:
+            conn.close()
