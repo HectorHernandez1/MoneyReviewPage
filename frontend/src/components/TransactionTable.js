@@ -21,8 +21,11 @@ const TransactionTable = ({ transactions, category, onClose, limitInfo }) => {
         aValue = Math.abs(a.amount);
         bValue = Math.abs(b.amount);
       } else if (sortField === 'date') {
-        aValue = new Date(a.transaction_date);
-        bValue = new Date(b.transaction_date);
+        // Parse as local dates to match formatDate behavior
+        const [aYear, aMonth, aDay] = a.transaction_date.split('-').map(Number);
+        const [bYear, bMonth, bDay] = b.transaction_date.split('-').map(Number);
+        aValue = new Date(aYear, aMonth - 1, aDay);
+        bValue = new Date(bYear, bMonth - 1, bDay);
       } else {
         return 0;
       }
@@ -108,7 +111,10 @@ const TransactionTable = ({ transactions, category, onClose, limitInfo }) => {
   };
 
   const formatDate = (dateString) => {
-    const date = new Date(dateString);
+    // Parse as local date to avoid timezone conversion issues
+    // Backend sends dates as 'YYYY-MM-DD' which new Date() interprets as UTC
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day); // month is 0-indexed
     return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
