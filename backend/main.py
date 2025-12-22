@@ -1,10 +1,13 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from database import (
     get_transactions_data,
     get_users_data,
     get_available_periods,
-    get_category_limit
+    get_category_limit,
+    get_all_categories,
+    update_transaction_category
 )
 import pandas as pd
 from datetime import datetime
@@ -239,6 +242,39 @@ async def get_category_transactions(
         "transactions": transactions,
         "limit_info": limit_info
     }
+@app.get("/categories-list")
+async def get_categories_list():
+    """
+    Get list of all available spending categories
+    """
+    categories = await get_all_categories()
+    return {"categories": categories}
+
+class CategoryUpdateRequest(BaseModel):
+    transaction_date: str
+    merchant_name: str
+    amount: float
+    person: str
+    new_category: str
+
+@app.put("/transaction/category")
+async def update_category(request: CategoryUpdateRequest):
+    """
+    Update the category for a specific transaction
+    """
+    success = await update_transaction_category(
+        transaction_date=request.transaction_date,
+        merchant_name=request.merchant_name,
+        amount=request.amount,
+        person=request.person,
+        new_category=request.new_category
+    )
+    
+    if success:
+        return {"success": True, "message": "Category updated successfully"}
+    else:
+        raise HTTPException(status_code=404, detail="Transaction not found or update failed")
+
 
 if __name__ == "__main__":
     import uvicorn

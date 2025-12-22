@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import CategoryEditModal from './CategoryEditModal';
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -7,9 +8,11 @@ const currencyFormatter = new Intl.NumberFormat('en-US', {
 
 const formatCurrency = (amount = 0) => currencyFormatter.format(Math.abs(amount));
 
-const TransactionTable = ({ transactions, category, onClose, limitInfo }) => {
+const TransactionTable = ({ transactions, category, onClose, limitInfo, onTransactionUpdate }) => {
   const [sortField, setSortField] = useState('amount');
   const [sortDirection, setSortDirection] = useState('desc');
+  const [selectedTransaction, setSelectedTransaction] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
 
   const sortedTransactions = useMemo(() => {
     if (!transactions || transactions.length === 0) return [];
@@ -127,6 +130,29 @@ const TransactionTable = ({ transactions, category, onClose, limitInfo }) => {
     return sortDirection === 'desc' ? ' ↓' : ' ↑';
   };
 
+  const handleRowClick = (transaction) => {
+    setSelectedTransaction(transaction);
+  };
+
+  const handleModalClose = () => {
+    setSelectedTransaction(null);
+  };
+
+  const handleUpdateSuccess = (message) => {
+    setSuccessMessage(message);
+    setSelectedTransaction(null);
+
+    // Clear success message after 3 seconds
+    setTimeout(() => {
+      setSuccessMessage(null);
+    }, 3000);
+
+    // Notify parent to refresh data
+    if (onTransactionUpdate) {
+      onTransactionUpdate();
+    }
+  };
+
   const renderHeader = () => (
     <div className="transaction-table-header">
       <div className="transaction-table-title">
@@ -141,6 +167,11 @@ const TransactionTable = ({ transactions, category, onClose, limitInfo }) => {
         {limitDetails && limitDetails.meta && (
           <div className={`transaction-limit-meta ${limitDetails.status}`}>
             {limitDetails.meta}
+          </div>
+        )}
+        {successMessage && (
+          <div className="success-message">
+            ✓ {successMessage}
           </div>
         )}
       </div>
@@ -189,7 +220,11 @@ const TransactionTable = ({ transactions, category, onClose, limitInfo }) => {
           </thead>
           <tbody>
             {sortedTransactions.map((transaction, index) => (
-              <tr key={index}>
+              <tr
+                key={index}
+                onClick={() => handleRowClick(transaction)}
+                className="clickable-row"
+              >
                 <td>{formatDate(transaction.transaction_date)}</td>
                 <td className="merchant">{transaction.merchant_name || 'Unknown'}</td>
                 <td className="category">{transaction.spending_category}</td>
@@ -201,6 +236,14 @@ const TransactionTable = ({ transactions, category, onClose, limitInfo }) => {
           </tbody>
         </table>
       </div>
+
+      {selectedTransaction && (
+        <CategoryEditModal
+          transaction={selectedTransaction}
+          onClose={handleModalClose}
+          onSuccess={handleUpdateSuccess}
+        />
+      )}
     </div>
   );
 };
