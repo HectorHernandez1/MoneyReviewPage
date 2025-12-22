@@ -88,10 +88,10 @@ async def get_transactions_data(
     
     # Period filters - default to current month if nothing specified
     if period == 'monthly' and month:
-        # Parse YYYY-MM format
-        year_val, month_val = month.split('-')
-        conditions.append("EXTRACT(YEAR FROM transaction_date) = %s AND EXTRACT(MONTH FROM transaction_date) = %s")
-        params.extend([int(year_val), int(month_val)])
+        # Parse YYYY-MM format and create date range
+        # This ensures we only get transactions from the 1st through the last day of the month
+        conditions.append("transaction_date >= %s::date AND transaction_date < (%s::date + INTERVAL '1 month')")
+        params.extend([f"{month}-01", f"{month}-01"])
         
         
     elif period == 'yearly' and year:
