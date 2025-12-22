@@ -35,11 +35,10 @@ const Dashboard = ({
         <LineChart data={rawTransactions} period={period} />
       </div>
 
-      <div className="charts-container">
-        <div className="chart-section">
-          <h2>Spending by Category</h2>
-          <BarChart data={transactions} period={period} onCategoryClick={onCategoryClick} />
-        </div>
+      {/* Bar Chart - Full Width */}
+      <div className="chart-section">
+        <h2>Spending by Category</h2>
+        <BarChart data={transactions} period={period} onCategoryClick={onCategoryClick} />
       </div>
 
       {/* Transaction Table Section */}
