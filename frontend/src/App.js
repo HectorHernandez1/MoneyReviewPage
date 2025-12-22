@@ -3,6 +3,7 @@ import { flushSync } from 'react-dom';
 import axios from 'axios';
 import Dashboard from './components/Dashboard';
 import FilterPanel from './components/FilterPanel';
+import CategoryManagement from './components/CategoryManagement';
 import './App.css';
 
 const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/budget/api' : 'http://localhost:8000';
@@ -21,6 +22,7 @@ function App() {
   const [categoryTransactions, setCategoryTransactions] = useState([]);
   const [loadingTransactions, setLoadingTransactions] = useState(false);
   const [categoryLimitInfo, setCategoryLimitInfo] = useState(null);
+  const [showCategoryManagement, setShowCategoryManagement] = useState(false);
   const fetchInProgress = useRef(false);
 
   useEffect(() => {
@@ -130,11 +132,20 @@ function App() {
     <div className="App">
       <header className="App-header">
         <h1>Budget Dashboard</h1>
-        <div className="user-display">
-          <span className="user-label">Viewing data for:</span>
-          <span className="user-name">
-            {user === 'all' ? 'All Users' : user}
-          </span>
+        <div className="header-actions">
+          <button
+            className="manage-categories-btn"
+            onClick={() => setShowCategoryManagement(true)}
+            title="Manage Categories"
+          >
+            ⚙️ Manage Categories
+          </button>
+          <div className="user-display">
+            <span className="user-label">Viewing data for:</span>
+            <span className="user-name">
+              {user === 'all' ? 'All Users' : user}
+            </span>
+          </div>
         </div>
       </header>
 
@@ -174,6 +185,10 @@ function App() {
           </div>
         </div>
       </main>
+
+      {showCategoryManagement && (
+        <CategoryManagement onClose={() => setShowCategoryManagement(false)} />
+      )}
     </div>
   );
 }
