@@ -10,14 +10,14 @@ const LineChart = ({ data, period }) => {
     try {
       const svg = d3.select(svgRef.current);
       svg.selectAll("*").remove();
-      
+
       // Clean up any existing tooltips
       d3.selectAll(".chart-tooltip").remove();
 
       // Get the container dimensions dynamically
       const container = svgRef.current.parentNode;
       const containerWidth = container.getBoundingClientRect().width;
-      
+
       const margin = { top: 20, right: 30, bottom: 80, left: 60 };
       const width = containerWidth - margin.left - margin.right;
       const height = 300 - margin.top - margin.bottom;
@@ -31,7 +31,7 @@ const LineChart = ({ data, period }) => {
 
       // Process data for line chart - simpler approach
       let processedData = [];
-      
+
       if (period === 'monthly') {
         // Group by day for monthly view
         const dailyData = d3.rollup(
@@ -46,12 +46,16 @@ const LineChart = ({ data, period }) => {
             return dateStr;
           }
         );
-        
-        processedData = Array.from(dailyData, ([dateStr, amount]) => ({
-          date: new Date(dateStr),
-          amount: amount,
-          label: dateStr
-        }));
+
+        processedData = Array.from(dailyData, ([dateStr, amount]) => {
+          // Parse as local date to avoid timezone conversion
+          const [year, month, day] = dateStr.split('-').map(Number);
+          return {
+            date: new Date(year, month - 1, day),
+            amount: amount,
+            label: dateStr
+          };
+        });
 
       } else {
         // Group by month for yearly view
@@ -63,16 +67,22 @@ const LineChart = ({ data, period }) => {
             if (typeof dateStr === 'string') {
               dateStr = dateStr.split('T')[0];
             }
-            const date = new Date(dateStr);
+            // Parse as local date to avoid timezone conversion
+            const [year, month, day] = dateStr.split('-').map(Number);
+            const date = new Date(year, month - 1, day);
             return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
           }
         );
-        
-        processedData = Array.from(monthlyData, ([monthStr, amount]) => ({
-          date: new Date(monthStr + '-01'),
-          amount: amount,
-          label: monthStr
-        }));
+
+        processedData = Array.from(monthlyData, ([monthStr, amount]) => {
+          // Parse as local date to avoid timezone conversion
+          const [year, month] = monthStr.split('-').map(Number);
+          return {
+            date: new Date(year, month - 1, 1),
+            amount: amount,
+            label: monthStr
+          };
+        });
       }
 
       // Sort by date
@@ -163,21 +173,24 @@ const LineChart = ({ data, period }) => {
         .style("stroke-width", 2)
         .style("filter", "drop-shadow(0 2px 4px rgba(0,0,0,0.3))")
         .style("cursor", "pointer")
-        .on("mouseover", function(event, d) {
+        .on("mouseover", function (event, d) {
           // Clear any existing timeout
           clearTimeout(hoverTimeout);
-          
+
           // Set timeout for 0.8 seconds
           hoverTimeout = setTimeout(() => {
+            // Get day of the week
+            const dayOfWeek = d.date.toLocaleDateString('en-US', { weekday: 'long' });
+
             // Show tooltip after 0.8 seconds
             tooltip.style("visibility", "visible")
               .html(`
-                <div><strong>Date:</strong> ${d.label}</div>
+                <div><strong>Date:</strong> ${d.label} (${dayOfWeek})</div>
                 <div><strong>Amount:</strong> $${d3.format(",.2f")(d.amount)}</div>
               `)
               .style("left", (event.pageX + 10) + "px")
               .style("top", (event.pageY - 10) + "px");
-            
+
             // Highlight the dot
             d3.select(this)
               .transition()
@@ -186,7 +199,7 @@ const LineChart = ({ data, period }) => {
               .style("fill", "#3b82f6");
           }, 500);
         })
-        .on("mousemove", function(event) {
+        .on("mousemove", function (event) {
           // Update tooltip position if it's visible
           if (tooltip.style("visibility") === "visible") {
             tooltip
@@ -194,13 +207,13 @@ const LineChart = ({ data, period }) => {
               .style("top", (event.pageY - 10) + "px");
           }
         })
-        .on("mouseout", function() {
+        .on("mouseout", function () {
           // Clear the timeout if mouse leaves before 0.8 seconds
           clearTimeout(hoverTimeout);
-          
+
           // Hide tooltip
           tooltip.style("visibility", "hidden");
-          
+
           // Reset dot appearance
           d3.select(this)
             .transition()
@@ -211,7 +224,7 @@ const LineChart = ({ data, period }) => {
 
       // Add x-axis with better formatting and fewer ticks
       let xAxisFormat, tickCount;
-      
+
       if (period === 'monthly') {
         xAxisFormat = d3.timeFormat("%m/%d");
         tickCount = Math.min(processedData.length, 10); // Limit to 10 ticks max
@@ -260,17 +273,17 @@ const LineChart = ({ data, period }) => {
 
   useEffect(() => {
     renderChart();
-    
+
     // Add resize listener
     const handleResize = () => {
       renderChart();
     };
-    
+
     window.addEventListener('resize', handleResize);
-    
+
     return () => {
       window.removeEventListener('resize', handleResize);
-      
+
       // Clean up any existing tooltips
       d3.selectAll(".chart-tooltip").remove();
     };
