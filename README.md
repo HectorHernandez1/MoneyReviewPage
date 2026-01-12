@@ -6,11 +6,20 @@ A personal budget dashboard application that visualizes and analyzes your financ
 
 **🎯 Live Application**: http://your-server.local/budget
 
+### Before Deploying
+Update the server name in these files:
+- `deploy-production.sh` - Line 12: `SERVER_IP="your-server.local"`
+- `manage-production.sh` - Line 7: `SERVER_IP="your-server.local"`
+
 ### Quick Deployment
 ```bash
 # Clone and deploy in one command
 cd /var/www/sites/budget
 git clone git@github.com:HectorHernandez1/MoneyReviewPage.git .
+
+# Update server name in deployment scripts
+sed -i 's/your-server.local/YOUR_SERVER_NAME/g' deploy-production.sh manage-production.sh
+
 chmod +x deploy-production.sh
 ./deploy-production.sh
 ```
