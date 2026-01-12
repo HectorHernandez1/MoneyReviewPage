@@ -86,7 +86,7 @@ cp .env.template .env
 # Edit .env with correct database settings:
 # DB_HOST=hector-MacBookPro8.local
 # DB_USER=hectorhernandez
-# DB_PASSWORD=REDACTED_PASSWORD
+# DB_PASSWORD=your_secure_password_here
 # DB_NAME=money_stuff
 ```
 

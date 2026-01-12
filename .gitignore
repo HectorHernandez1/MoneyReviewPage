@@ -42,3 +42,33 @@ coverage/
 
 # notes 
 serverinfo.txt
+
+# Improved environment file patterns (catch files with spaces)
+.env*
+**/.env*
+*.env
+
+# Credentials and secrets
+credentials.json
+secrets.yaml
+secrets.yml
+*secret*
+*credential*
+
+# Keys and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+
+# Data files that might contain PII
+*.csv
+*.xlsx
+*.xls
+
+# Backup files
+*.bak
+*.backup
+*~
