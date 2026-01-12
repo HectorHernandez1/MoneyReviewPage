@@ -22,9 +22,9 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "http://hector-MacBookPro8.local",
-        "http://hector-MacBookPro8.local:3000",
-        "http://hector-MacBookPro8.local:8000",
+        "http://your-server.local",
+        "http://your-server.local:3000",
+        "http://your-server.local:8000",
     ],
     allow_credentials=True,
     allow_methods=["*"],

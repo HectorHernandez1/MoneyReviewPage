@@ -9,7 +9,7 @@ set -e
 # Configuration
 DEPLOY_DIR="/var/www/sites/budget"
 STAGING_DIR="~/deployment/budget"
-SERVER_IP="hector-MacBookPro8.local"
+SERVER_IP="your-server.local"
 
 # Colors for output
 RED='\033[0;31m'
@@ -129,7 +129,7 @@ log_info "Configuring Nginx..."
 sudo tee /etc/nginx/sites-available/budget > /dev/null << 'EOF'
 server {
     listen 80;
-    server_name hector-MacBookPro8.local;
+    server_name your-server.local;
 
     # Serve frontend static files
     location /budget {

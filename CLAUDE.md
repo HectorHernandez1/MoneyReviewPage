@@ -2,7 +2,7 @@
 
 ## Server Environment
 - **OS**: Ubuntu 24.04.2 LTS
-- **Server IP**: hector-MacBookPro8.local
+- **Server IP**: your-server.local
 - **User**: hector
 - **Node.js**: v18.19.1
 - **npm**: 9.2.0
@@ -19,17 +19,17 @@
 ```
 
 ## Access URLs
-- **Main Application**: http://hector-MacBookPro8.local/budget
-- **API Backend**: http://hector-MacBookPro8.local/budget/api
-- **Direct Frontend**: http://hector-MacBookPro8.local:3000 (development)
-- **Direct Backend**: http://hector-MacBookPro8.local:8000 (development)
+- **Main Application**: http://your-server.local/budget
+- **API Backend**: http://your-server.local/budget/api
+- **Direct Frontend**: http://your-server.local:3000 (development)
+- **Direct Backend**: http://your-server.local:8000 (development)
 
 ## Quick Production Deployment
 
 ### Automated Deployment (Recommended)
 ```bash
 # 1. Clone repository to production directory
-ssh hector@hector-MacBookPro8.local
+ssh hector@your-server.local
 cd /var/www/sites/budget
 git pull
 
@@ -84,7 +84,7 @@ pip install -r requirements.txt
 # Configure environment variables
 cp .env.template .env
 # Edit .env with correct database settings:
-# DB_HOST=hector-MacBookPro8.local
+# DB_HOST=your-server.local
 # DB_USER=hectorhernandez
 # DB_PASSWORD=your_secure_password_here
 # DB_NAME=money_stuff
@@ -136,7 +136,7 @@ Create `/etc/nginx/sites-available/budget`:
 ```nginx
 server {
     listen 80;
-    server_name hector-MacBookPro8.local;
+    server_name your-server.local;
 
     # Serve frontend static files
     location /budget {
@@ -182,7 +182,7 @@ sudo systemctl reload nginx
 ```
 
 ## Database Configuration
-- **Host**: hector-MacBookPro8.local
+- **Host**: your-server.local
 - **Port**: 5432
 - **Database**: money_stuff
 - **Schema**: budget_app
@@ -211,7 +211,7 @@ sudo systemctl reload nginx
    sudo systemctl status postgresql
    
    # Test connection
-   psql -h hector-MacBookPro8.local -U hectorhernandez -d money_stuff
+   psql -h your-server.local -U hectorhernandez -d money_stuff
    ```
 
 4. **Permission Errors**
@@ -303,7 +303,7 @@ tail -f /var/www/sites/budget/logs/app.log
 curl -I http://localhost/budget/
 
 # Test network access
-curl -I http://hector-MacBookPro8.local/budget/
+curl -I http://your-server.local/budget/
 
 # Check services
 pm2 status
@@ -375,8 +375,8 @@ sudo nginx -t                 # Test nginx config
 ## Summary
 
 Your Money Review Page is **successfully deployed** and accessible at:
-- **Main URL**: http://hector-MacBookPro8.local/budget
-- **API**: http://hector-MacBookPro8.local/budget/api
+- **Main URL**: http://your-server.local/budget
+- **API**: http://your-server.local/budget/api
 
 **Working browsers**: Safari, Firefox  
 **Issue**: Chrome security blocking (use Safari for now)

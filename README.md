@@ -4,7 +4,7 @@ A personal budget dashboard application that visualizes and analyzes your financ
 
 ## Production Deployment (Ubuntu Server)
 
-**🎯 Live Application**: http://hector-MacBookPro8.local/budget
+**🎯 Live Application**: http://your-server.local/budget
 
 ### Quick Deployment
 ```bash
@@ -107,7 +107,7 @@ sudo nginx -t && sudo systemctl reload nginx
 
 ## Server Environment
 - **OS**: Ubuntu 24.04.2 LTS
-- **Server**: hector-MacBookPro8.local (local network)  
+- **Server**: your-server.local (local network)  
 - **Database**: PostgreSQL (money_stuff.budget_app schema)
 - **Process Manager**: PM2
 - **Web Server**: Nginx
