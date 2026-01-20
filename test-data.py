@@ -29,4 +29,5 @@ async def main():
         print(f"Total amount: ${df['amount'].sum():,.2f}")
 
 if __name__ == "__main__":
+    print("\n")
     asyncio.run(main())
