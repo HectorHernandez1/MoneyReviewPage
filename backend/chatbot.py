@@ -79,7 +79,11 @@ async def process_chat_message(message: str, conversation_history: list, filters
     period_desc = f"{month}" if period == "monthly" and month else f"year {year}" if period == "yearly" else "current month"
     user_desc = f"for {user}" if user and user.lower() != "all" else "for all users"
 
+    today = dt.date.today().strftime("%B %d, %Y")
+
     system_prompt = f"""You are a budget assistant for a personal finance dashboard. Your ONLY purpose is to help users understand their spending data in this app.
+
+Today's date is {today}.
 
 STRICT RULES:
 - ONLY answer questions related to the user's spending, transactions, budgets, categories, merchants, and financial data in this dashboard.
