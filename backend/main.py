@@ -12,9 +12,10 @@ from database import (
     update_category_limit,
     add_new_category
 )
+from chatbot import process_chat_message
 import pandas as pd
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List, Any
 
 app = FastAPI(title="Budget Data API")
 
@@ -332,6 +333,26 @@ async def create_category(request: NewCategoryRequest):
         return {"success": True, "message": "Category created successfully"}
     else:
         raise HTTPException(status_code=400, detail="Category already exists or creation failed")
+
+
+class ChatRequest(BaseModel):
+    message: str
+    conversation_history: List[Any] = []
+    filters: dict = {}
+
+@app.post("/chat")
+async def chat(request: ChatRequest):
+    """Chat with the AI budget assistant"""
+    import os
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        raise HTTPException(status_code=503, detail="Chatbot not configured: ANTHROPIC_API_KEY not set")
+
+    result = await process_chat_message(
+        message=request.message,
+        conversation_history=request.conversation_history,
+        filters=request.filters
+    )
+    return result
 
 
 if __name__ == "__main__":

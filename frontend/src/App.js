@@ -4,6 +4,7 @@ import axios from 'axios';
 import Dashboard from './components/Dashboard';
 import FilterPanel from './components/FilterPanel';
 import CategoryManagement from './components/CategoryManagement';
+import ChatBot from './components/ChatBot';
 import './App.css';
 
 const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/budget/api' : 'http://localhost:8000';
@@ -189,6 +190,8 @@ function App() {
       {showCategoryManagement && (
         <CategoryManagement onClose={() => setShowCategoryManagement(false)} />
       )}
+
+      <ChatBot filters={{ period, year, month, user }} />
     </div>
   );
 }
