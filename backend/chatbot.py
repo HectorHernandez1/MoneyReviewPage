@@ -72,6 +72,7 @@ Keep responses concise and friendly. Use bullet points or short tables for lists
             response = client.messages.create(
                 model="claude-sonnet-4-5-20250929",
                 max_tokens=1024,
+                cache_control={"type": "ephemeral"},
                 system=system_prompt,
                 tools=TOOLS,
                 messages=messages
