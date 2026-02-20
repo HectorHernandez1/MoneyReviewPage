@@ -19,8 +19,10 @@ function ChatBot({ filters }) {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [conversationHistory, setConversationHistory] = useState([]);
+  const [chatSize, setChatSize] = useState({ width: 400, height: 520 });
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const resizingRef = useRef(null);
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -37,10 +39,8 @@ function ChatBot({ filters }) {
   // Sync chatUser with dashboard filter
   useEffect(() => {
     if (filters.user && filters.user.toLowerCase() !== 'all') {
-      // Specific user selected in dashboard — auto-set and skip "Who are you?"
       setChatUser(filters.user);
     } else {
-      // "All Users" selected — reset so user selection screen shows
       setChatUser(null);
     }
   }, [filters.user]);
@@ -53,7 +53,6 @@ function ChatBot({ filters }) {
         .then(res => {
           const userList = res.data.users || [];
           setUsers(userList);
-          // If only one user, auto-select them
           if (userList.length === 1) {
             setChatUser(userList[0]);
           }
@@ -62,6 +61,50 @@ function ChatBot({ filters }) {
         .finally(() => setLoadingUsers(false));
     }
   }, [isOpen, users.length, chatUser]);
+
+  // Resize handlers
+  const startResize = (e, direction) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startWidth = chatSize.width;
+    const startHeight = chatSize.height;
+    const maxHeight = window.innerHeight * 0.85;
+
+    resizingRef.current = { direction, startX, startY, startWidth, startHeight };
+
+    const onMouseMove = (e) => {
+      if (!resizingRef.current) return;
+      const { direction, startX, startY, startWidth, startHeight } = resizingRef.current;
+
+      let newWidth = startWidth;
+      let newHeight = startHeight;
+
+      if (direction === 'corner' || direction === 'left') {
+        // Dragging left edge: moving mouse left = bigger width
+        newWidth = Math.min(700, Math.max(320, startWidth + (startX - e.clientX)));
+      }
+      if (direction === 'corner' || direction === 'top') {
+        // Dragging top edge: moving mouse up = bigger height
+        newHeight = Math.min(maxHeight, Math.max(350, startHeight + (startY - e.clientY)));
+      }
+
+      setChatSize({ width: newWidth, height: newHeight });
+    };
+
+    const onMouseUp = () => {
+      resizingRef.current = null;
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+    };
+
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  };
 
   const handleSelectUser = (selectedUser) => {
     setChatUser(selectedUser);
@@ -131,7 +174,12 @@ function ChatBot({ filters }) {
 
       {/* Chat window */}
       {isOpen && (
-        <div className="chat-window">
+        <div className="chat-window" style={{ width: chatSize.width, height: chatSize.height }}>
+          {/* Resize handles */}
+          <div className="chat-resize-handle" onMouseDown={(e) => startResize(e, 'corner')} />
+          <div className="chat-resize-edge-top" onMouseDown={(e) => startResize(e, 'top')} />
+          <div className="chat-resize-edge-left" onMouseDown={(e) => startResize(e, 'left')} />
+
           <div className="chat-header">
             <span className="chat-title">
               Budget Assistant{chatUser ? ` — ${chatUser}` : ''}
