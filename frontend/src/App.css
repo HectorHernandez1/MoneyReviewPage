@@ -1146,6 +1146,11 @@
   color: #e5e7eb;
 }
 
+.chat-close-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+}
+
 .chat-messages {
   flex: 1;
   overflow-y: auto;
