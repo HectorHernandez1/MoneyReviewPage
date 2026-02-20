@@ -42,6 +42,8 @@ coverage/
 
 # notes 
 serverinfo.txt
+CLAUDE.md
+agent.md
 
 # Improved environment file patterns (catch files with spaces)
 .env*
