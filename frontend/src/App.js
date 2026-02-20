@@ -19,6 +19,7 @@ function App() {
   const [user, setUser] = useState('all');
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState({});
+  const [categoryLimits, setCategoryLimits] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [categoryTransactions, setCategoryTransactions] = useState([]);
   const [loadingTransactions, setLoadingTransactions] = useState(false);
@@ -63,16 +64,18 @@ function App() {
         params.append('year', year);
       }
 
-      const [transactionsRes, categoriesRes, rawTransactionsRes] = await Promise.all([
+      const [transactionsRes, categoriesRes, rawTransactionsRes, limitsRes] = await Promise.all([
         axios.get(`${API_BASE_URL}/transactions?${params.toString()}`),
         axios.get(`${API_BASE_URL}/categories?${params.toString()}`),
-        axios.get(`${API_BASE_URL}/raw-transactions?${params.toString()}`)
+        axios.get(`${API_BASE_URL}/raw-transactions?${params.toString()}`),
+        axios.get(`${API_BASE_URL}/categories-with-limits`)
       ]);
 
       setTransactions(transactionsRes.data.data);
       setSummary(transactionsRes.data.summary);
       setCategories(categoriesRes.data.categories);
       setRawTransactions(rawTransactionsRes.data.data);
+      setCategoryLimits(limitsRes.data.categories || []);
     } catch (error) {
       console.error('Error fetching data:', error);
     }
@@ -171,6 +174,7 @@ function App() {
                   transactions={transactions}
                   rawTransactions={rawTransactions}
                   categories={categories}
+                  categoryLimits={categoryLimits}
                   summary={summary}
                   period={period}
                   onCategoryClick={handleCategoryClick}

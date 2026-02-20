@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 import { getCategoryColor } from '../utils/colors';
 
-const BarChart = ({ data, period, onCategoryClick }) => {
+const BarChart = ({ data, period, categoryLimits, onCategoryClick }) => {
   const svgRef = useRef();
 
   useEffect(() => {
@@ -15,7 +15,7 @@ const BarChart = ({ data, period, onCategoryClick }) => {
     const container = svgRef.current.parentNode;
     const containerWidth = container.getBoundingClientRect().width;
 
-    const margin = { top: 20, right: 30, bottom: 80, left: 60 };
+    const margin = { top: 20, right: 30, bottom: 120, left: 60 };
     const width = containerWidth - margin.left - margin.right;
     const height = 350 - margin.top - margin.bottom;
 
@@ -26,6 +26,16 @@ const BarChart = ({ data, period, onCategoryClick }) => {
       .append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);
 
+    // Build a lookup for budget limits
+    const limitsMap = {};
+    if (categoryLimits && categoryLimits.length > 0) {
+      categoryLimits.forEach(c => {
+        if (c.spending_limit > 0) {
+          limitsMap[c.category_name] = c.spending_limit;
+        }
+      });
+    }
+
     // Always show spending by category regardless of time frame
     const aggregatedData = d3.rollup(
       data,
@@ -34,7 +44,8 @@ const BarChart = ({ data, period, onCategoryClick }) => {
     );
     const categoryData = Array.from(aggregatedData, ([key, value]) => ({
       category: key,
-      amount: value
+      amount: value,
+      limit: limitsMap[key] || null
     }))
       .sort((a, b) => b.amount - a.amount); // Sort from largest to smallest
 
@@ -43,12 +54,16 @@ const BarChart = ({ data, period, onCategoryClick }) => {
       .range([0, width])
       .padding(0.1);
 
+    // Adjust yScale to include budget limits so markers aren't cut off
+    const maxSpending = d3.max(categoryData, d => d.amount);
+    const maxLimit = d3.max(categoryData, d => d.limit || 0);
+    const yMax = Math.max(maxSpending, maxLimit) * 1.05;
+
     const yScale = d3.scaleLinear()
-      .domain([0, d3.max(categoryData, d => d.amount)])
+      .domain([0, yMax])
       .range([height, 0]);
 
     // Use consistent color mapping based on category names
-
     const bars = g.selectAll(".bar")
       .data(categoryData)
       .enter().append("rect")
@@ -57,7 +72,13 @@ const BarChart = ({ data, period, onCategoryClick }) => {
       .attr("width", xScale.bandwidth())
       .attr("y", d => yScale(d.amount))
       .attr("height", d => height - yScale(d.amount))
-      .attr("fill", d => getCategoryColor(d.category))
+      .attr("fill", d => {
+        // Color red/coral when over budget
+        if (d.limit && d.amount > d.limit) {
+          return "#ef4444";
+        }
+        return getCategoryColor(d.category);
+      })
       .attr("stroke", "#1a202c")
       .attr("stroke-width", 2)
       .style("filter", "drop-shadow(0 2px 4px rgba(0,0,0,0.3))")
@@ -76,6 +97,14 @@ const BarChart = ({ data, period, onCategoryClick }) => {
           .duration(200)
           .style("opacity", 0.3);
 
+        // Dim other limit markers
+        g.selectAll(".budget-limit-group")
+          .transition()
+          .duration(200)
+          .style("opacity", function () {
+            return d3.select(this).attr("data-category") === d.category ? 1 : 0.3;
+          });
+
         // Dispatch custom event for cross-chart communication
         document.dispatchEvent(new CustomEvent('categoryHover', {
           detail: { category: d.category, source: 'bar' }
@@ -89,6 +118,12 @@ const BarChart = ({ data, period, onCategoryClick }) => {
           .style("opacity", 1)
           .attr("stroke-width", 2);
 
+        // Reset all limit markers
+        g.selectAll(".budget-limit-group")
+          .transition()
+          .duration(200)
+          .style("opacity", 1);
+
         // Dispatch custom event for cross-chart communication
         document.dispatchEvent(new CustomEvent('categoryHoverEnd', {
           detail: { source: 'bar' }
@@ -100,6 +135,38 @@ const BarChart = ({ data, period, onCategoryClick }) => {
         }
       });
 
+    // Draw budget limit markers
+    categoryData.forEach(d => {
+      if (!d.limit) return;
+
+      const x = xScale(d.category);
+      const barWidth = xScale.bandwidth();
+      const y = yScale(d.limit);
+
+      const limitGroup = g.append("g")
+        .attr("class", "budget-limit-group")
+        .attr("data-category", d.category);
+
+      // Dashed line across bar width
+      limitGroup.append("line")
+        .attr("x1", x - 4)
+        .attr("x2", x + barWidth + 4)
+        .attr("y1", y)
+        .attr("y2", y)
+        .attr("stroke", d.amount > d.limit ? "#fbbf24" : "#9ca3af")
+        .attr("stroke-width", 2)
+        .attr("stroke-dasharray", "6,3");
+
+      // Small label showing limit amount
+      limitGroup.append("text")
+        .attr("x", x + barWidth + 6)
+        .attr("y", y + 4)
+        .text(`$${d3.format(",.0f")(d.limit)}`)
+        .style("fill", d.amount > d.limit ? "#fbbf24" : "#9ca3af")
+        .style("font-size", "9px")
+        .style("font-weight", "600");
+    });
+
     g.append("g")
       .attr("class", "x-axis")
       .attr("transform", `translate(0,${height})`)
@@ -107,7 +174,7 @@ const BarChart = ({ data, period, onCategoryClick }) => {
       .selectAll("text")
       .style("text-anchor", "end")
       .style("fill", "#d1d5db")
-      .style("font-size", "12px")
+      .style("font-size", "11px")
       .attr("dx", "-.8em")
       .attr("dy", ".15em")
       .attr("transform", "rotate(-45)");
@@ -136,6 +203,12 @@ const BarChart = ({ data, period, onCategoryClick }) => {
       // Highlight matching bar, dim others
       bars.style("opacity", d => d.category === category ? 1 : 0.3)
         .attr("stroke-width", d => d.category === category ? 3 : 2);
+
+      // Also highlight/dim limit markers
+      g.selectAll(".budget-limit-group")
+        .style("opacity", function () {
+          return d3.select(this).attr("data-category") === category ? 1 : 0.3;
+        });
     };
 
     const handleCategoryHoverEnd = (event) => {
@@ -144,6 +217,10 @@ const BarChart = ({ data, period, onCategoryClick }) => {
       // Reset all bars
       bars.style("opacity", 1)
         .attr("stroke-width", 2);
+
+      // Reset all limit markers
+      g.selectAll(".budget-limit-group")
+        .style("opacity", 1);
     };
 
     document.addEventListener('categoryHover', handleCategoryHover);
@@ -155,7 +232,7 @@ const BarChart = ({ data, period, onCategoryClick }) => {
       // Re-render chart on window resize
       const container = svgRef.current.parentNode;
       const containerWidth = container.getBoundingClientRect().width;
-      const margin = { top: 20, right: 30, bottom: 80, left: 60 };
+      const margin = { top: 20, right: 30, bottom: 120, left: 60 };
       const width = containerWidth - margin.left - margin.right;
 
       svg.attr("viewBox", `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`);
@@ -170,7 +247,7 @@ const BarChart = ({ data, period, onCategoryClick }) => {
       window.removeEventListener('resize', handleResize);
     };
 
-  }, [data, period]);
+  }, [data, period, categoryLimits]);
 
   return <svg ref={svgRef} style={{ width: '100%', height: 'auto' }}></svg>;
 };

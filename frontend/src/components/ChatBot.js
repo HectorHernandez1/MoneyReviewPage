@@ -34,7 +34,18 @@ function ChatBot({ filters }) {
     }
   }, [isOpen, chatUser]);
 
-  // Fetch users when chat is opened
+  // Sync chatUser with dashboard filter
+  useEffect(() => {
+    if (filters.user && filters.user.toLowerCase() !== 'all') {
+      // Specific user selected in dashboard — auto-set and skip "Who are you?"
+      setChatUser(filters.user);
+    } else {
+      // "All Users" selected — reset so user selection screen shows
+      setChatUser(null);
+    }
+  }, [filters.user]);
+
+  // Fetch users when chat is opened and "All Users" is selected
   useEffect(() => {
     if (isOpen && users.length === 0 && !chatUser) {
       setLoadingUsers(true);

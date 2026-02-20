@@ -8,6 +8,7 @@ const Dashboard = ({
   transactions,
   rawTransactions,
   categories,
+  categoryLimits,
   summary,
   period,
   onCategoryClick,
@@ -39,7 +40,7 @@ const Dashboard = ({
       {/* Bar Chart - Full Width */}
       <div className="chart-section">
         <h2>Spending by Category</h2>
-        <BarChart data={transactions} period={period} onCategoryClick={onCategoryClick} />
+        <BarChart data={transactions} period={period} categoryLimits={categoryLimits} onCategoryClick={onCategoryClick} />
       </div>
 
       {/* Transaction Table Section */}
