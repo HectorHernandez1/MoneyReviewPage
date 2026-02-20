@@ -1087,6 +1087,10 @@
   right: 24px;
   width: 400px;
   height: 520px;
+  min-width: 320px;
+  min-height: 350px;
+  max-width: 700px;
+  max-height: 85vh;
   background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
   border-radius: 12px;
   box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
@@ -1097,11 +1101,60 @@
   animation: chatSlideUp 0.25s ease-out;
 }
 
+.chat-resize-handle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 18px;
+  height: 18px;
+  cursor: nwse-resize;
+  z-index: 10;
+  border-radius: 12px 0 0 0;
+}
+
+.chat-resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 8px;
+  height: 8px;
+  border-top: 2px solid #6b7280;
+  border-left: 2px solid #6b7280;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.chat-resize-handle:hover::after {
+  opacity: 1;
+}
+
+.chat-resize-edge-top {
+  position: absolute;
+  top: 0;
+  left: 18px;
+  right: 0;
+  height: 6px;
+  cursor: ns-resize;
+  z-index: 9;
+}
+
+.chat-resize-edge-left {
+  position: absolute;
+  top: 18px;
+  left: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: ew-resize;
+  z-index: 9;
+}
+
 @keyframes chatSlideUp {
   from {
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1263,10 +1316,14 @@
 }
 
 @keyframes chatBounce {
-  0%, 60%, 100% {
+
+  0%,
+  60%,
+  100% {
     transform: translateY(0);
     opacity: 0.4;
   }
+
   30% {
     transform: translateY(-6px);
     opacity: 1;
@@ -1398,5 +1455,11 @@
   .chat-bubble {
     bottom: 16px;
     right: 16px;
+  }
+
+  .chat-resize-handle,
+  .chat-resize-edge-top,
+  .chat-resize-edge-left {
+    display: none;
   }
 }
