@@ -22,6 +22,8 @@ function App() {
   const [categoryLimits, setCategoryLimits] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [categoryTransactions, setCategoryTransactions] = useState([]);
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [dateTransactions, setDateTransactions] = useState([]);
   const [loadingTransactions, setLoadingTransactions] = useState(false);
   const [categoryLimitInfo, setCategoryLimitInfo] = useState(null);
   const [showCategoryManagement, setShowCategoryManagement] = useState(false);
@@ -47,6 +49,8 @@ function App() {
       setSelectedCategory(null);
       setCategoryTransactions([]);
       setCategoryLimitInfo(null);
+      setSelectedDate(null);
+      setDateTransactions([]);
     });
   };
 
@@ -117,6 +121,25 @@ function App() {
     fetchCategoryTransactions(category);
   };
 
+  const handleDateClick = (dateStr) => {
+    if (!dateStr) {
+      // Clear date selection
+      setSelectedDate(null);
+      setDateTransactions([]);
+      return;
+    }
+
+    // Filter rawTransactions
+    const filtered = rawTransactions.filter(t => {
+      // transaction_date is usually "YYYY-MM-DD" or similar
+      const tDate = String(t.transaction_date).split('T')[0];
+      return tDate.startsWith(dateStr);
+    });
+
+    setDateTransactions(filtered);
+    setSelectedDate(dateStr);
+  };
+
   const handleCloseTransactionTable = () => {
     setSelectedCategory(null);
     setCategoryTransactions([]);
@@ -180,6 +203,9 @@ function App() {
                   onCategoryClick={handleCategoryClick}
                   selectedCategory={selectedCategory}
                   categoryTransactions={categoryTransactions}
+                  selectedDate={selectedDate}
+                  dateTransactions={dateTransactions}
+                  onDateClick={handleDateClick}
                   loadingTransactions={loadingTransactions}
                   onCloseTransactionTable={handleCloseTransactionTable}
                   categoryLimitInfo={categoryLimitInfo}

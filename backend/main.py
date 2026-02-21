@@ -139,7 +139,14 @@ async def get_raw_transactions(
     df['transaction_date'] = pd.to_datetime(df['transaction_date'])
     
     # Convert to records and return raw transaction data
-    transactions = df[['amount', 'spending_category', 'transaction_date']].to_dict('records')
+    transactions = df[[
+        'amount', 
+        'merchant_name',
+        'spending_category', 
+        'person',
+        'transaction_date',
+        'account_type'
+    ]].to_dict('records')
     
     # Convert datetime to string for JSON serialization
     for transaction in transactions:

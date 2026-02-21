@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 
-const LineChart = ({ data, period }) => {
+const LineChart = ({ data, period, onDateClick }) => {
   const svgRef = useRef();
 
   const renderChart = () => {
@@ -173,6 +173,11 @@ const LineChart = ({ data, period }) => {
         .style("stroke-width", 2)
         .style("filter", "drop-shadow(0 2px 4px rgba(0,0,0,0.3))")
         .style("cursor", "pointer")
+        .on("click", function (event, d) {
+          if (onDateClick) {
+            onDateClick(d.label);
+          }
+        })
         .on("mouseover", function (event, d) {
           // Clear any existing timeout
           clearTimeout(hoverTimeout);

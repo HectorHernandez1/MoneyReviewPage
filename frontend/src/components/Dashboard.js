@@ -14,6 +14,9 @@ const Dashboard = ({
   onCategoryClick,
   selectedCategory,
   categoryTransactions,
+  selectedDate,
+  dateTransactions,
+  onDateClick,
   loadingTransactions,
   onCloseTransactionTable,
   categoryLimitInfo,
@@ -34,8 +37,19 @@ const Dashboard = ({
       {/* Line Chart at the top */}
       <div className="chart-section line-chart-section">
         <h2>Spending Trend - {getTimeframeName()}</h2>
-        <LineChart data={rawTransactions} period={period} />
+        <LineChart data={rawTransactions} period={period} onDateClick={onDateClick} />
       </div>
+
+      {/* Transaction Table Section - For Date */}
+      {selectedDate && (
+        <TransactionTable
+          transactions={dateTransactions}
+          category={selectedDate}
+          limitInfo={null} // Don't show limit info for date views
+          onClose={() => onDateClick(null)} // Call the handler with null to clear
+          onTransactionUpdate={onTransactionUpdate}
+        />
+      )}
 
       {/* Bar Chart - Full Width */}
       <div className="chart-section">
@@ -43,7 +57,7 @@ const Dashboard = ({
         <BarChart data={transactions} period={period} categoryLimits={categoryLimits} onCategoryClick={onCategoryClick} />
       </div>
 
-      {/* Transaction Table Section */}
+      {/* Transaction Table Section - For Category */}
       {selectedCategory && (
         <TransactionTable
           transactions={categoryTransactions}
@@ -53,6 +67,7 @@ const Dashboard = ({
           onTransactionUpdate={onTransactionUpdate}
         />
       )}
+
 
       {loadingTransactions && (
         <div className="loading">Loading transactions...</div>
