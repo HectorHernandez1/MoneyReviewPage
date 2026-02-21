@@ -40,10 +40,11 @@ coverage/
 *.tmp
 *.temp
 
-# notes 
+# notes
 serverinfo.txt
 CLAUDE.md
 agent.md
+.claude/
 
 # Improved environment file patterns (catch files with spaces)
 .env*
