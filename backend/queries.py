@@ -34,8 +34,8 @@ def _build_period_filter(params, period, month=None, year=None, user=None):
         params.extend([now.year, now.month])
 
     if user and user.lower() != "all":
-        conditions.append("LOWER(person) = %s")
-        params.append(user.lower())
+        conditions.append("LOWER(person) LIKE %s")
+        params.append(f"%{user.lower()}%")
 
     return " AND ".join(conditions)
 
@@ -217,6 +217,18 @@ def handle_get_recent_transactions(args):
     return results
 
 
+def handle_lookup_users(args):
+    search = args.get("search", "")
+    params = [f"%{search.lower()}%"]
+    query = """
+        SELECT DISTINCT person
+        FROM budget_app.transactions_view
+        WHERE LOWER(person) LIKE %s
+        ORDER BY person
+    """
+    return _run_query(query, params)
+
+
 TOOL_HANDLERS = {
     "get_spending_by_category": handle_get_spending_by_category,
     "get_merchant_spending": handle_get_merchant_spending,
@@ -224,4 +236,5 @@ TOOL_HANDLERS = {
     "get_spending_comparison": handle_get_spending_comparison,
     "get_spending_by_person": handle_get_spending_by_person,
     "get_recent_transactions": handle_get_recent_transactions,
+    "lookup_users": handle_lookup_users,
 }

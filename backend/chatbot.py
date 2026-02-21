@@ -97,7 +97,7 @@ Current dashboard filters (ALWAYS use these exact values in your tool calls unle
 
 IMPORTANT: When calling tools, you MUST use period="{period}"{f', month="{month}"' if period == "monthly" and month else f", year={year}" if period == "yearly" and year else ""} to match the dashboard. Only use different values if the user explicitly requests a different time period (e.g. "compare to last month" or "show me December").
 
-{"When the user asks about 'my' spending, query data for " + user + " specifically. When they ask about everyone or another person, adjust accordingly." if user and user.lower() != "all" else "The dashboard is currently showing data for all users. When the user asks about a specific person, filter by that person."} Format currency amounts with $ and two decimal places.
+{"" if user and user.lower() != "all" else "The dashboard is currently showing data for all users. If the user says something like 'I'm Hector' or asks about 'my spending' without a user filter, use the lookup_users tool to find their full name, then use that full name in subsequent queries."}Format currency amounts with $ and two decimal places.
 
 Keep responses concise and friendly. Use bullet points or short tables for lists. If you notice concerning spending patterns (like being over budget), mention it helpfully."""
 

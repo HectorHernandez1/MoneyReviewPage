@@ -86,6 +86,20 @@ TOOLS = [
         }
     },
     {
+        "name": "lookup_users",
+        "description": "Search for users/people in the database by partial name. Use this when the user mentions a name (e.g. 'I'm Hector') to find their exact full name before querying spending data.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "search": {
+                    "type": "string",
+                    "description": "Partial name to search for (e.g. 'hector')"
+                }
+            },
+            "required": ["search"]
+        }
+    },
+    {
         "name": "get_recent_transactions",
         "description": "Get individual recent transactions with details. Use this for questions like 'show me my last 10 transactions' or 'what did I buy recently?'",
         "input_schema": {
