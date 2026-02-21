@@ -12,9 +12,6 @@ const SUGGESTIONS = [
 
 function ChatBot({ filters }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [chatUser, setChatUser] = useState(null);
-  const [users, setUsers] = useState([]);
-  const [loadingUsers, setLoadingUsers] = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -31,36 +28,10 @@ function ChatBot({ filters }) {
   }, [messages, loading]);
 
   useEffect(() => {
-    if (isOpen && chatUser && inputRef.current) {
+    if (isOpen && inputRef.current) {
       inputRef.current.focus();
     }
-  }, [isOpen, chatUser]);
-
-  // Sync chatUser with dashboard filter
-  useEffect(() => {
-    if (filters.user && filters.user.toLowerCase() !== 'all') {
-      setChatUser(filters.user);
-    } else {
-      setChatUser(null);
-    }
-  }, [filters.user]);
-
-  // Fetch users when chat is opened and "All Users" is selected
-  useEffect(() => {
-    if (isOpen && users.length === 0 && !chatUser) {
-      setLoadingUsers(true);
-      axios.get(`${API_BASE_URL}/users`)
-        .then(res => {
-          const userList = res.data.users || [];
-          setUsers(userList);
-          if (userList.length === 1) {
-            setChatUser(userList[0]);
-          }
-        })
-        .catch(() => setUsers([]))
-        .finally(() => setLoadingUsers(false));
-    }
-  }, [isOpen, users.length, chatUser]);
+  }, [isOpen]);
 
   // Resize handlers
   const startResize = (e, direction) => {
@@ -106,10 +77,6 @@ function ChatBot({ filters }) {
     document.addEventListener('mouseup', onMouseUp);
   };
 
-  const handleSelectUser = (selectedUser) => {
-    setChatUser(selectedUser);
-  };
-
   const sendMessage = async (text) => {
     if (!text.trim() || loading) return;
 
@@ -126,7 +93,7 @@ function ChatBot({ filters }) {
           period: filters.period,
           year: filters.year,
           month: filters.month,
-          user: chatUser
+          user: filters.user
         }
       });
 
@@ -151,7 +118,6 @@ function ChatBot({ filters }) {
   const handleClear = () => {
     setMessages([]);
     setConversationHistory([]);
-    setChatUser(null);
   };
 
   const handleKeyDown = (e) => {
@@ -181,9 +147,7 @@ function ChatBot({ filters }) {
           <div className="chat-resize-edge-left" onMouseDown={(e) => startResize(e, 'left')} />
 
           <div className="chat-header">
-            <span className="chat-title">
-              Budget Assistant{chatUser ? ` — ${chatUser}` : ''}
-            </span>
+            <span className="chat-title">Budget Assistant</span>
             <div className="chat-header-actions">
               <button className="chat-header-btn" onClick={handleClear} title="Clear conversation">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -205,43 +169,10 @@ function ChatBot({ filters }) {
             </div>
           </div>
 
-          {/* User selection screen */}
-          {!chatUser ? (
-            <div className="chat-messages">
-              <div className="chat-user-select">
-                <div className="chat-user-select-icon">
-                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="1.5">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                    <circle cx="12" cy="7" r="4" />
-                  </svg>
-                </div>
-                <p className="chat-user-select-title">Who are you?</p>
-                <p className="chat-user-select-subtitle">Select your name to get started</p>
-                {loadingUsers ? (
-                  <div className="chat-typing" style={{ justifyContent: 'center', padding: '16px 0' }}>
-                    <span></span><span></span><span></span>
-                  </div>
-                ) : (
-                  <div className="chat-user-buttons">
-                    {users.map((u) => (
-                      <button
-                        key={u}
-                        className="chat-user-btn"
-                        onClick={() => handleSelectUser(u)}
-                      >
-                        {u}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <>
-              <div className="chat-messages">
+          <div className="chat-messages">
                 {messages.length === 0 && !loading && (
                   <div className="chat-welcome">
-                    <p>Hi {chatUser}! I can help you understand your spending. Try asking:</p>
+                    <p>Hi! I can help you understand your spending. Try asking:</p>
                     <div className="chat-suggestions">
                       {SUGGESTIONS.map((s, i) => (
                         <button key={i} className="chat-suggestion" onClick={() => sendMessage(s)}>
@@ -287,8 +218,6 @@ function ChatBot({ filters }) {
                   </svg>
                 </button>
               </form>
-            </>
-          )}
         </div>
       )}
     </>
