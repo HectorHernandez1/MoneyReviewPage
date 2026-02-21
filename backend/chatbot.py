@@ -76,7 +76,6 @@ async def process_chat_message(message: str, conversation_history: list, filters
     year = filters.get("year", "")
     user = filters.get("user", "all")
 
-    period_desc = f"{month}" if period == "monthly" and month else f"year {year}" if period == "yearly" else "current month"
     user_desc = f"for {user}" if user and user.lower() != "all" else "for all users"
 
     today = dt.date.today().strftime("%B %d, %Y")
