@@ -88,7 +88,6 @@ def handle_get_merchant_spending(args):
         WHERE {where}
         GROUP BY merchant_name
         ORDER BY total DESC
-        LIMIT 25
     """
     return _run_query(query, params)
 
@@ -201,14 +200,12 @@ def handle_get_recent_transactions(args):
         where += " AND LOWER(merchant_name) LIKE %s"
         params.append(f"%{search.lower()}%")
 
-    limit = min(args.get("limit", 15), 50)
 
     query = f"""
         SELECT transaction_date, merchant_name, amount, spending_category, person, account_type
         FROM budget_app.transactions_view
         WHERE {where}
         ORDER BY transaction_date DESC
-        LIMIT {limit}
     """
     results = _run_query(query, params)
     if isinstance(results, dict) and "error" in results:
