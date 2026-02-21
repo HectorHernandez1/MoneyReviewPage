@@ -110,6 +110,10 @@ TOOLS = [
                 "period": {"type": "string", "enum": ["monthly", "yearly"]},
                 "user": {"type": "string", "description": "Filter by person name"},
                 "category": {"type": "string", "description": "Filter by spending category"},
+                "merchant_search": {
+                    "type": "string",
+                    "description": "Optional search term to filter transactions by merchant name (case-insensitive partial match)"
+                },
                 "limit": {
                     "type": "integer",
                     "description": "Number of transactions to return (default 15, max 50)"

@@ -196,6 +196,11 @@ def handle_get_recent_transactions(args):
         where += " AND LOWER(spending_category) = %s"
         params.append(category.lower())
 
+    search = args.get("merchant_search")
+    if search:
+        where += " AND LOWER(merchant_name) LIKE %s"
+        params.append(f"%{search.lower()}%")
+
     limit = min(args.get("limit", 15), 50)
 
     query = f"""
