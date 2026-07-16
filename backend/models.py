@@ -15,7 +15,31 @@ from abc import ABC, abstractmethod
 
 DEFAULT_MODELS = {
     "anthropic": "claude-sonnet-5",
-    "openai": "gpt-5.6-luna",
+}
+
+# Providers with OpenAI-compatible chat-completions APIs — all served by
+# OpenAIModel, differing only in base URL, API key env var, and defaults.
+# token_param: newer OpenAI models require max_completion_tokens; compatible
+# providers still use max_tokens.
+OPENAI_COMPATIBLE_PROVIDERS = {
+    "openai": {
+        "base_url": None,  # SDK default (api.openai.com)
+        "key_env": "OPENAI_API_KEY",
+        "default_model": "gpt-5.6-luna",
+        "token_param": "max_completion_tokens",
+    },
+    "deepseek": {
+        "base_url": "https://api.deepseek.com",
+        "key_env": "DEEPSEEK_API_KEY",
+        "default_model": "deepseek-v4-flash",
+        "token_param": "max_tokens",
+    },
+    "glm": {
+        "base_url": "https://api.z.ai/api/paas/v4",
+        "key_env": "GLM_API_KEY",
+        "default_model": "glm-5.2",
+        "token_param": "max_tokens",
+    },
 }
 
 
@@ -109,12 +133,17 @@ def _to_openai_tools(tools):
 
 
 class OpenAIModel(ModelClient):
-    """OpenAI models via the Chat Completions API."""
+    """OpenAI and OpenAI-compatible models (DeepSeek, GLM, ...) via Chat Completions."""
 
-    def __init__(self, model=None):
+    def __init__(self, model=None, provider="openai"):
         from openai import OpenAI
-        self.model = model or DEFAULT_MODELS["openai"]
-        self.client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+        config = OPENAI_COMPATIBLE_PROVIDERS[provider]
+        self.model = model or config["default_model"]
+        self.token_param = config["token_param"]
+        self.client = OpenAI(
+            api_key=os.environ.get(config["key_env"]),
+            **({"base_url": config["base_url"]} if config["base_url"] else {}),
+        )
 
     def run_chat(self, system_prompt, history, user_message, tools, execute_tool, max_iterations=8):
         messages = [{"role": "system", "content": system_prompt}]
@@ -126,9 +155,9 @@ class OpenAIModel(ModelClient):
         for _ in range(max_iterations):
             response = self.client.chat.completions.create(
                 model=self.model,
-                max_completion_tokens=4096,
                 tools=openai_tools,
                 messages=messages,
+                **{self.token_param: 4096},
             )
             msg = response.choices[0].message
 
@@ -179,11 +208,13 @@ def configuration_error():
     if provider == "anthropic":
         if not os.environ.get("ANTHROPIC_API_KEY"):
             return "ANTHROPIC_API_KEY not set"
-    elif provider == "openai":
-        if not os.environ.get("OPENAI_API_KEY"):
-            return "OPENAI_API_KEY not set"
+    elif provider in OPENAI_COMPATIBLE_PROVIDERS:
+        key_env = OPENAI_COMPATIBLE_PROVIDERS[provider]["key_env"]
+        if not os.environ.get(key_env):
+            return f"{key_env} not set"
     else:
-        return f"Unknown LLM_PROVIDER '{provider}' (use 'anthropic' or 'openai')"
+        valid = "', '".join(["anthropic"] + list(OPENAI_COMPATIBLE_PROVIDERS))
+        return f"Unknown LLM_PROVIDER '{provider}' (use '{valid}')"
     return None
 
 
@@ -194,9 +225,10 @@ def get_model_client():
     """Build (once) and return the configured model client."""
     global _client
     if _client is None:
+        provider = get_provider()
         model = os.environ.get("LLM_MODEL") or None
-        if get_provider() == "openai":
-            _client = OpenAIModel(model)
+        if provider in OPENAI_COMPATIBLE_PROVIDERS:
+            _client = OpenAIModel(model, provider=provider)
         else:
             _client = AnthropicModel(model)
     return _client
