@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/budget/api' : 'http://localhost:8000';
 
@@ -185,7 +187,27 @@ function ChatBot({ filters }) {
 
                 {messages.map((msg, i) => (
                   <div key={i} className={`chat-message chat-message-${msg.role}`}>
-                    <div className="chat-message-content">{msg.content}</div>
+                    <div className="chat-message-content">
+                      {msg.role === 'assistant' ? (
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            table: ({ node, ...props }) => (
+                              <div className="chat-table-wrap">
+                                <table {...props} />
+                              </div>
+                            ),
+                            a: ({ node, ...props }) => (
+                              <a {...props} target="_blank" rel="noopener noreferrer" />
+                            )
+                          }}
+                        >
+                          {msg.content}
+                        </ReactMarkdown>
+                      ) : (
+                        msg.content
+                      )}
+                    </div>
                   </div>
                 ))}
 

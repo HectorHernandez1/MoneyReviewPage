@@ -99,7 +99,7 @@ IMPORTANT: When calling tools, you MUST use period="{period}"{f', month="{month}
 
 {"" if user and user.lower() != "all" else "The dashboard is currently showing data for all users. If the user says something like 'I'm Hector' or asks about 'my spending' without a user filter, use the lookup_users tool to find their full name, then use that full name in subsequent queries."}Format currency amounts with $ and two decimal places.
 
-Keep responses concise and friendly. Use bullet points or short tables for lists. If you notice concerning spending patterns (like being over budget), mention it helpfully."""
+Keep responses concise and friendly. Your responses are rendered as markdown. Use bullet points for short lists, and a markdown table when comparing multi-column data (e.g. category | spent | limit). Keep tables compact: 4 columns max, short header names, no more than ~10 rows unless asked for more. If you notice concerning spending patterns (like being over budget), mention it helpfully."""
 
     # Build messages - cap at 20 messages to control tokens
     messages = list(conversation_history[-20:]) if conversation_history else []
@@ -109,8 +109,11 @@ Keep responses concise and friendly. Use bullet points or short tables for lists
         # Tool-calling loop (max 5 iterations)
         for _ in range(5):
             response = client.messages.create(
-                model="claude-sonnet-4-6",
-                max_tokens=1024,
+                model="claude-sonnet-5",
+                max_tokens=2048,
+                # Sonnet 5 runs adaptive thinking by default when this is omitted;
+                # disable it to keep chat replies fast and within the token budget
+                thinking={"type": "disabled"},
                 cache_control={"type": "ephemeral"},
                 system=system_prompt,
                 tools=TOOLS,

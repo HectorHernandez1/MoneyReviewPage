@@ -1273,6 +1273,7 @@
 
 .chat-message-assistant {
   align-self: flex-start;
+  max-width: 95%;
 }
 
 .chat-message-user .chat-message-content {
@@ -1291,7 +1292,97 @@
   padding: 10px 14px;
   font-size: 0.9rem;
   line-height: 1.5;
-  white-space: pre-wrap;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+/* Markdown rendering inside assistant messages */
+.chat-message-assistant .chat-message-content p {
+  margin: 0 0 8px 0;
+}
+
+.chat-message-assistant .chat-message-content p:last-child {
+  margin-bottom: 0;
+}
+
+.chat-message-assistant .chat-message-content ul,
+.chat-message-assistant .chat-message-content ol {
+  margin: 4px 0 8px 0;
+  padding-left: 20px;
+}
+
+.chat-message-assistant .chat-message-content li {
+  margin: 2px 0;
+}
+
+.chat-message-assistant .chat-message-content strong {
+  color: #f3f4f6;
+  font-weight: 600;
+}
+
+.chat-message-assistant .chat-message-content code {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 0.82rem;
+}
+
+.chat-message-assistant .chat-message-content h1,
+.chat-message-assistant .chat-message-content h2,
+.chat-message-assistant .chat-message-content h3,
+.chat-message-assistant .chat-message-content h4 {
+  margin: 10px 0 6px 0;
+  font-size: 0.95rem;
+  color: #f3f4f6;
+}
+
+.chat-message-assistant .chat-message-content hr {
+  border: none;
+  border-top: 1px solid #4a5568;
+  margin: 10px 0;
+}
+
+/* Tables: scroll horizontally inside the bubble instead of overflowing */
+.chat-table-wrap {
+  overflow-x: auto;
+  margin: 6px 0 8px 0;
+  border: 1px solid #4a5568;
+  border-radius: 8px;
+}
+
+.chat-table-wrap:last-child {
+  margin-bottom: 0;
+}
+
+.chat-message-content table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.chat-message-content th {
+  background: #2d3748;
+  color: #9ca3af;
+  font-weight: 600;
+  text-align: left;
+  padding: 7px 12px;
+  border-bottom: 1px solid #4a5568;
+}
+
+.chat-message-content td {
+  padding: 6px 12px;
+  border-bottom: 1px solid rgba(74, 85, 104, 0.5);
+  color: #e5e7eb;
+}
+
+.chat-message-content tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.chat-message-content tbody tr:nth-child(even) {
+  background: rgba(45, 55, 72, 0.5);
 }
 
 .chat-typing {
