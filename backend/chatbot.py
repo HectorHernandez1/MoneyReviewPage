@@ -36,8 +36,19 @@ def _apply_filter_defaults(tool_name, tool_args, filters):
     year = filters.get("year", "")
     user = filters.get("user", "all")
 
-    # Comparison tool uses month_a/month_b, don't inject defaults
-    if tool_name == "get_spending_comparison":
+    # Tools with no time filter at all — nothing to inject
+    if tool_name in ("lookup_users", "list_categories"):
+        return tool_args
+
+    # Tools with their own time semantics (month_a/month_b, start_month/end_month,
+    # lookback_months) — only inject the user default
+    if tool_name in ("get_spending_comparison", "get_spending_trend", "find_recurring_charges"):
+        if "user" not in tool_args and user and user.lower() != "all":
+            tool_args["user"] = user
+        return tool_args
+
+    # An explicit date range overrides period/month/year — only inject the user default
+    if "start_date" in tool_args or "end_date" in tool_args:
         if "user" not in tool_args and user and user.lower() != "all":
             tool_args["user"] = user
         return tool_args
@@ -96,6 +107,13 @@ Current dashboard filters (ALWAYS use these exact values in your tool calls unle
 - User filter: {user_desc}
 
 IMPORTANT: When calling tools, you MUST use period="{period}"{f', month="{month}"' if period == "monthly" and month else f", year={year}" if period == "yearly" and year else ""} to match the dashboard. Only use different values if the user explicitly requests a different time period (e.g. "compare to last month" or "show me December").
+
+Tool usage tips:
+- For partial periods like "last week", "past 10 days", or "since March 15", pass start_date/end_date (YYYY-MM-DD) instead of period — compute the dates from today's date above.
+- For trend questions ("how has X changed?", "average monthly spend"), use get_spending_trend.
+- For subscription/recurring-charge questions, use find_recurring_charges.
+- Category filters use partial matching. If a category filter returns no results or you're unsure of the exact name, call list_categories to see valid category names.
+- For "biggest purchase" questions, use get_recent_transactions with sort_by="amount" and a small limit.
 
 {"" if user and user.lower() != "all" else "The dashboard is currently showing data for all users. If the user says something like 'I'm Hector' or asks about 'my spending' without a user filter, use the lookup_users tool to find their full name, then use that full name in subsequent queries."}Format currency amounts with $ and two decimal places.
 
