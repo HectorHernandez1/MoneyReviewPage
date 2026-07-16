@@ -350,9 +350,10 @@ class ChatRequest(BaseModel):
 @app.post("/chat")
 async def chat(request: ChatRequest):
     """Chat with the AI budget assistant"""
-    import os
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        raise HTTPException(status_code=503, detail="Chatbot not configured: ANTHROPIC_API_KEY not set")
+    from models import configuration_error
+    config_error = configuration_error()
+    if config_error:
+        raise HTTPException(status_code=503, detail=f"Chatbot not configured: {config_error}")
 
     result = await process_chat_message(
         message=request.message,

@@ -1,0 +1,202 @@
+"""
+Model provider abstraction for the budget chatbot.
+
+Supports Anthropic (Claude) and OpenAI models behind one interface.
+Select the provider with environment variables:
+
+    LLM_PROVIDER=anthropic|openai   (default: anthropic)
+    LLM_MODEL=<model id>            (optional; provider default used if unset)
+    ANTHROPIC_API_KEY / OPENAI_API_KEY for the chosen provider
+"""
+
+import os
+import json
+from abc import ABC, abstractmethod
+
+DEFAULT_MODELS = {
+    "anthropic": "claude-sonnet-5",
+    "openai": "gpt-5.6-luna",
+}
+
+
+class ModelClient(ABC):
+    """A chat model that can run a tool-calling loop against our SQL tools."""
+
+    @abstractmethod
+    def run_chat(self, system_prompt, history, user_message, tools, execute_tool, max_iterations=8):
+        """
+        Run one user turn, executing tools until the model produces a text answer.
+
+        Args:
+            system_prompt: System prompt string.
+            history: Prior clean history [{role, content: str}, ...].
+            user_message: The new user message text.
+            tools: Tool definitions in Anthropic format (name/description/input_schema).
+            execute_tool: Callable (tool_name, tool_args: dict) -> JSON string result.
+            max_iterations: Max tool-calling rounds before giving up.
+
+        Returns:
+            (text_response, clean_history) — text_response is None if the loop
+            was exhausted; clean_history holds only plain-text user/assistant
+            turns, capped at 20 entries.
+        """
+
+
+class AnthropicModel(ModelClient):
+    """Claude via the Anthropic Messages API."""
+
+    def __init__(self, model=None):
+        from anthropic import Anthropic
+        self.model = model or DEFAULT_MODELS["anthropic"]
+        self.client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+
+    def run_chat(self, system_prompt, history, user_message, tools, execute_tool, max_iterations=8):
+        messages = list(history[-20:]) if history else []
+        messages.append({"role": "user", "content": user_message})
+
+        text_response = None
+        for _ in range(max_iterations):
+            response = self.client.messages.create(
+                model=self.model,
+                max_tokens=4096,
+                # Adaptive thinking: the model reasons only when a question needs
+                # it (e.g. "why am I over budget?"), simple lookups stay fast.
+                # Effort "medium" keeps analysis solid without over-deliberating.
+                thinking={"type": "adaptive"},
+                output_config={"effort": "medium"},
+                cache_control={"type": "ephemeral"},
+                system=system_prompt,
+                tools=tools,
+                messages=messages,
+            )
+
+            if response.stop_reason == "tool_use":
+                # Keep the full content (incl. thinking blocks) for the in-turn loop
+                messages.append({"role": "assistant", "content": response.content})
+                tool_results = []
+                for block in response.content:
+                    if block.type == "tool_use":
+                        tool_results.append({
+                            "type": "tool_result",
+                            "tool_use_id": block.id,
+                            "content": execute_tool(block.name, dict(block.input)),
+                        })
+                messages.append({"role": "user", "content": tool_results})
+            else:
+                text_response = "".join(b.text for b in response.content if b.type == "text")
+                messages.append({"role": "assistant", "content": text_response})
+                break
+
+        # Tool and thinking blocks stay server-side: slicing raw messages could
+        # split a tool_use/tool_result pair and break the next request.
+        clean_history = [m for m in messages if isinstance(m.get("content"), str)]
+        return text_response, clean_history[-20:]
+
+
+def _to_openai_tools(tools):
+    """Convert Anthropic-format tool definitions to OpenAI function-tool format."""
+    return [
+        {
+            "type": "function",
+            "function": {
+                "name": t["name"],
+                "description": t["description"],
+                "parameters": t["input_schema"],
+            },
+        }
+        for t in tools
+    ]
+
+
+class OpenAIModel(ModelClient):
+    """OpenAI models via the Chat Completions API."""
+
+    def __init__(self, model=None):
+        from openai import OpenAI
+        self.model = model or DEFAULT_MODELS["openai"]
+        self.client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+
+    def run_chat(self, system_prompt, history, user_message, tools, execute_tool, max_iterations=8):
+        messages = [{"role": "system", "content": system_prompt}]
+        messages += list(history[-20:]) if history else []
+        messages.append({"role": "user", "content": user_message})
+        openai_tools = _to_openai_tools(tools)
+
+        text_response = None
+        for _ in range(max_iterations):
+            response = self.client.chat.completions.create(
+                model=self.model,
+                max_completion_tokens=4096,
+                tools=openai_tools,
+                messages=messages,
+            )
+            msg = response.choices[0].message
+
+            if msg.tool_calls:
+                messages.append({
+                    "role": "assistant",
+                    "content": msg.content,
+                    "tool_calls": [
+                        {
+                            "id": tc.id,
+                            "type": "function",
+                            "function": {"name": tc.function.name, "arguments": tc.function.arguments},
+                        }
+                        for tc in msg.tool_calls
+                    ],
+                })
+                for tc in msg.tool_calls:
+                    try:
+                        args = json.loads(tc.function.arguments or "{}")
+                    except json.JSONDecodeError:
+                        args = {}
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": tc.id,
+                        "content": execute_tool(tc.function.name, args),
+                    })
+            else:
+                text_response = msg.content or ""
+                messages.append({"role": "assistant", "content": text_response})
+                break
+
+        clean_history = [
+            m for m in messages
+            if m.get("role") in ("user", "assistant")
+            and isinstance(m.get("content"), str)
+            and not m.get("tool_calls")
+        ]
+        return text_response, clean_history[-20:]
+
+
+def get_provider():
+    return os.environ.get("LLM_PROVIDER", "anthropic").strip().lower()
+
+
+def configuration_error():
+    """Return a human-readable configuration problem, or None if ready to chat."""
+    provider = get_provider()
+    if provider == "anthropic":
+        if not os.environ.get("ANTHROPIC_API_KEY"):
+            return "ANTHROPIC_API_KEY not set"
+    elif provider == "openai":
+        if not os.environ.get("OPENAI_API_KEY"):
+            return "OPENAI_API_KEY not set"
+    else:
+        return f"Unknown LLM_PROVIDER '{provider}' (use 'anthropic' or 'openai')"
+    return None
+
+
+_client = None
+
+
+def get_model_client():
+    """Build (once) and return the configured model client."""
+    global _client
+    if _client is None:
+        model = os.environ.get("LLM_MODEL") or None
+        if get_provider() == "openai":
+            _client = OpenAIModel(model)
+        else:
+            _client = AnthropicModel(model)
+    return _client

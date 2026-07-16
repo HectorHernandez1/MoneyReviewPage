@@ -1,15 +1,12 @@
-import os
 import json
 import decimal
 import datetime as dt
 from dotenv import load_dotenv
-from anthropic import Anthropic
 from tools import TOOLS
 from queries import TOOL_HANDLERS
+from models import get_model_client
 
 load_dotenv()
-
-client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
 
 def _make_serializable(obj):
@@ -70,18 +67,8 @@ def _apply_filter_defaults(tool_name, tool_args, filters):
     return tool_args
 
 
-async def process_chat_message(message: str, conversation_history: list, filters: dict):
-    """
-    Process a chat message using Claude with tool-calling.
-
-    Args:
-        message: The user's question
-        conversation_history: List of prior messages [{role, content}, ...]
-        filters: Current dashboard filters {period, year, month, user}
-
-    Returns:
-        dict with 'response' (text) and 'conversation_history' (updated list)
-    """
+def _build_system_prompt(filters):
+    """Render the system prompt for the current dashboard filters."""
     period = filters.get("period", "monthly")
     month = filters.get("month", "")
     year = filters.get("year", "")
@@ -91,7 +78,7 @@ async def process_chat_message(message: str, conversation_history: list, filters
 
     today = dt.date.today().strftime("%B %d, %Y")
 
-    system_prompt = f"""You are a budget assistant for a personal finance dashboard. Your ONLY purpose is to help users understand their spending data in this app.
+    return f"""You are a budget assistant for a personal finance dashboard. Your ONLY purpose is to help users understand their spending data in this app.
 
 Today's date is {today}.
 
@@ -124,86 +111,58 @@ Tool usage tips:
 
 Keep responses concise and friendly. Your responses are rendered as markdown. Use bullet points for short lists, and a markdown table when comparing multi-column data (e.g. category | spent | limit). Keep tables compact: 4 columns max, short header names, no more than ~10 rows unless asked for more. If you notice concerning spending patterns (like being over budget), mention it helpfully."""
 
-    # Build messages - cap at 20 messages to control tokens
-    messages = list(conversation_history[-20:]) if conversation_history else []
-    messages.append({"role": "user", "content": message})
+
+async def process_chat_message(message: str, conversation_history: list, filters: dict):
+    """
+    Process a chat message using the configured LLM provider with tool-calling.
+
+    Args:
+        message: The user's question
+        conversation_history: List of prior messages [{role, content}, ...]
+        filters: Current dashboard filters {period, year, month, user}
+
+    Returns:
+        dict with 'response' (text) and 'conversation_history' (updated list)
+    """
+    system_prompt = _build_system_prompt(filters)
+
+    def execute_tool(tool_name, tool_args):
+        """Run one SQL tool and return its result as a JSON string."""
+        handler = TOOL_HANDLERS.get(tool_name)
+        if not handler:
+            return json.dumps({"error": f"Unknown tool: {tool_name}"})
+        # Inject dashboard filters as defaults
+        args = _apply_filter_defaults(tool_name, dict(tool_args), filters)
+        result = _make_serializable(handler(args))
+        return json.dumps(result, default=str)
 
     try:
-        # Tool-calling loop (max 8 iterations — insight questions can need
-        # several rounds of drill-down queries)
-        for _ in range(8):
-            response = client.messages.create(
-                model="claude-sonnet-5",
-                max_tokens=4096,
-                # Adaptive thinking: the model reasons only when a question needs
-                # it (e.g. "why am I over budget?"), simple lookups stay fast.
-                # Effort "medium" keeps analysis solid without over-deliberating.
-                thinking={"type": "adaptive"},
-                output_config={"effort": "medium"},
-                cache_control={"type": "ephemeral"},
-                system=system_prompt,
-                tools=TOOLS,
-                messages=messages
-            )
+        model = get_model_client()
+        # Max 8 tool-calling iterations — insight questions can need
+        # several rounds of drill-down queries
+        text_response, clean_history = model.run_chat(
+            system_prompt=system_prompt,
+            history=conversation_history,
+            user_message=message,
+            tools=TOOLS,
+            execute_tool=execute_tool,
+            max_iterations=8,
+        )
 
-            # Check if Claude wants to use tools
-            if response.stop_reason == "tool_use":
-                # Process all tool calls in this response
-                assistant_content = response.content
-                messages.append({"role": "assistant", "content": assistant_content})
-
-                tool_results = []
-                for block in assistant_content:
-                    if block.type == "tool_use":
-                        handler = TOOL_HANDLERS.get(block.name)
-                        if handler:
-                            # Inject dashboard filters as defaults
-                            args = _apply_filter_defaults(block.name, dict(block.input), filters)
-                            result = handler(args)
-                            result = _make_serializable(result)
-                            tool_results.append({
-                                "type": "tool_result",
-                                "tool_use_id": block.id,
-                                "content": json.dumps(result, default=str)
-                            })
-                        else:
-                            tool_results.append({
-                                "type": "tool_result",
-                                "tool_use_id": block.id,
-                                "content": json.dumps({"error": f"Unknown tool: {block.name}"})
-                            })
-
-                messages.append({"role": "user", "content": tool_results})
-            else:
-                # Claude gave a final text response
-                text_response = ""
-                for block in response.content:
-                    if hasattr(block, "text"):
-                        text_response += block.text
-
-                messages.append({"role": "assistant", "content": text_response})
-
-                # Build clean history for the frontend (only user text + assistant text).
-                # Tool and thinking blocks stay server-side: slicing raw messages could
-                # split a tool_use/tool_result pair and break the next request.
-                clean_history = []
-                for msg in messages:
-                    if isinstance(msg.get("content"), str):
-                        clean_history.append(msg)
-
-                return {
-                    "response": text_response,
-                    "conversation_history": clean_history[-20:]
-                }
+        if text_response is None:
+            return {
+                "response": "I had trouble processing that question. Could you try rephrasing it?",
+                "conversation_history": clean_history,
+            }
 
         return {
-            "response": "I had trouble processing that question. Could you try rephrasing it?",
-            "conversation_history": [m for m in messages if isinstance(m.get("content"), str)][-20:]
+            "response": text_response,
+            "conversation_history": clean_history,
         }
 
     except Exception as e:
         print(f"Chatbot error: {e}")
         return {
             "response": f"Sorry, I encountered an error: {str(e)}",
-            "conversation_history": conversation_history or []
+            "conversation_history": conversation_history or [],
         }
