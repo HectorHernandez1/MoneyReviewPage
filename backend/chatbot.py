@@ -183,7 +183,9 @@ Keep responses concise and friendly. Your responses are rendered as markdown. Us
 
                 messages.append({"role": "assistant", "content": text_response})
 
-                # Build clean history for the frontend (only user text + assistant text)
+                # Build clean history for the frontend (only user text + assistant text).
+                # Tool and thinking blocks stay server-side: slicing raw messages could
+                # split a tool_use/tool_result pair and break the next request.
                 clean_history = []
                 for msg in messages:
                     if isinstance(msg.get("content"), str):
@@ -191,12 +193,12 @@ Keep responses concise and friendly. Your responses are rendered as markdown. Us
 
                 return {
                     "response": text_response,
-                    "conversation_history": messages[-20:]
+                    "conversation_history": clean_history[-20:]
                 }
 
         return {
             "response": "I had trouble processing that question. Could you try rephrasing it?",
-            "conversation_history": messages[-20:]
+            "conversation_history": [m for m in messages if isinstance(m.get("content"), str)][-20:]
         }
 
     except Exception as e:
