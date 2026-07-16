@@ -114,6 +114,11 @@ Tool usage tips:
 - For subscription/recurring-charge questions, use find_recurring_charges.
 - Category filters use partial matching. If a category filter returns no results or you're unsure of the exact name, call list_categories to see valid category names.
 - For "biggest purchase" questions, use get_recent_transactions with sort_by="amount" and a small limit.
+- When asked WHY spending is high or over budget, investigate before answering — don't just report totals:
+  1. get_category_budget_status to find which categories are over.
+  2. For each over category: get_recent_transactions (sort_by="amount") to find the big drivers, and get_spending_trend to see if this month is unusual vs prior months.
+  3. find_recurring_charges if a category's cost may come from subscriptions.
+  Then explain the cause: name the specific merchants/transactions responsible, and say whether it's a one-off purchase or a recurring increase.
 
 {"" if user and user.lower() != "all" else "The dashboard is currently showing data for all users. If the user says something like 'I'm Hector' or asks about 'my spending' without a user filter, use the lookup_users tool to find their full name, then use that full name in subsequent queries."}Format currency amounts with $ and two decimal places.
 
@@ -124,14 +129,17 @@ Keep responses concise and friendly. Your responses are rendered as markdown. Us
     messages.append({"role": "user", "content": message})
 
     try:
-        # Tool-calling loop (max 5 iterations)
-        for _ in range(5):
+        # Tool-calling loop (max 8 iterations — insight questions can need
+        # several rounds of drill-down queries)
+        for _ in range(8):
             response = client.messages.create(
                 model="claude-sonnet-5",
-                max_tokens=2048,
-                # Sonnet 5 runs adaptive thinking by default when this is omitted;
-                # disable it to keep chat replies fast and within the token budget
-                thinking={"type": "disabled"},
+                max_tokens=4096,
+                # Adaptive thinking: the model reasons only when a question needs
+                # it (e.g. "why am I over budget?"), simple lookups stay fast.
+                # Effort "medium" keeps analysis solid without over-deliberating.
+                thinking={"type": "adaptive"},
+                output_config={"effort": "medium"},
                 cache_control={"type": "ephemeral"},
                 system=system_prompt,
                 tools=TOOLS,
