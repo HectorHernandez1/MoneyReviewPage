@@ -49,6 +49,20 @@ function App() {
     document.title = `Budget Dashboard · ${UI_VERSION}`;
   }, []);
 
+  // Non-null when the deployed versions can't be trusted; shown in the
+  // header badge and footer. Quiet in dev builds.
+  const versionProblem = (() => {
+    if (!IS_PROD_BUILD || !apiVersion) return null;
+    if (UI_VERSION === 'unknown' || apiVersion.version === 'unknown') return 'version unavailable';
+    if (apiVersion.version !== UI_VERSION) return 'version mismatch';
+    return null;
+  })();
+
+  const versionHelp = {
+    'version unavailable': 'The deploy did not stamp a version — deploy with ./manage-production.sh update or ./deploy-production.sh so VERSION is written and baked into the build',
+    'version mismatch': 'Frontend and backend are running different commits — rebuild the frontend or restart the backend (pm2 restart budget-backend)',
+  };
+
   useEffect(() => {
     if (fetchInProgress.current) return;
     fetchInProgress.current = true;
@@ -184,7 +198,17 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <h1>Budget Dashboard</h1>
+        <h1>
+          Budget Dashboard
+          <span
+            className={`app-version-badge${versionProblem ? ' badge-warn' : ''}`}
+            title={versionProblem
+              ? `⚠ ${versionProblem} — ${versionHelp[versionProblem]}`
+              : `${UI_BUILD_TIME ? `built ${UI_BUILD_TIME}` : 'app version'}${apiVersion ? ` · API ${apiVersion.version}` : ''}`}
+          >
+            {versionProblem ? `⚠ ${UI_VERSION}` : UI_VERSION}
+          </span>
+        </h1>
         <div className="header-actions">
           <button
             className="manage-categories-btn"
@@ -255,24 +279,11 @@ function App() {
         ) : (
           <span>API unreachable</span>
         )}
-        {(() => {
-          if (!IS_PROD_BUILD || !apiVersion) return null;
-          if (UI_VERSION === 'unknown' || apiVersion.version === 'unknown') {
-            return (
-              <span className="footer-mismatch" title="The deploy did not stamp a version — deploy with ./manage-production.sh update or ./deploy-production.sh so VERSION is written and baked into the build">
-                ⚠ version unavailable
-              </span>
-            );
-          }
-          if (apiVersion.version !== UI_VERSION) {
-            return (
-              <span className="footer-mismatch" title="Frontend and backend are running different commits — rebuild the frontend or restart the backend (pm2 restart budget-backend)">
-                ⚠ version mismatch
-              </span>
-            );
-          }
-          return null;
-        })()}
+        {versionProblem && (
+          <span className="footer-mismatch" title={versionHelp[versionProblem]}>
+            ⚠ {versionProblem}
+          </span>
+        )}
       </footer>
 
       {showCategoryManagement && (
