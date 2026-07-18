@@ -12,12 +12,26 @@ const SUGGESTIONS = [
   "Compare this month to last month"
 ];
 
+const CHAT_STORAGE_KEY = 'budget-chat-conversation';
+
+// Restore a cached conversation so the chat survives page reloads.
+// Close (X) and the trash button clear it; minimize keeps it.
+const loadStoredChat = () => {
+  try {
+    const stored = JSON.parse(localStorage.getItem(CHAT_STORAGE_KEY));
+    if (stored && Array.isArray(stored.messages) && Array.isArray(stored.history)) {
+      return stored;
+    }
+  } catch (e) { /* corrupt or unavailable storage — start fresh */ }
+  return { messages: [], history: [] };
+};
+
 function ChatBot({ filters }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState(() => loadStoredChat().messages);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [conversationHistory, setConversationHistory] = useState([]);
+  const [conversationHistory, setConversationHistory] = useState(() => loadStoredChat().history);
   const [chatSize, setChatSize] = useState({ width: 400, height: 520 });
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -34,6 +48,20 @@ function ChatBot({ filters }) {
       inputRef.current.focus();
     }
   }, [isOpen]);
+
+  // Cache the conversation (capped at the 40 most recent messages)
+  useEffect(() => {
+    try {
+      if (messages.length === 0) {
+        localStorage.removeItem(CHAT_STORAGE_KEY);
+      } else {
+        localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify({
+          messages: messages.slice(-40),
+          history: conversationHistory
+        }));
+      }
+    } catch (e) { /* storage full or unavailable — skip caching */ }
+  }, [messages, conversationHistory]);
 
   // Auto-grow the input with its content, up to the CSS max-height
   useEffect(() => {
