@@ -1887,3 +1887,25 @@
 .use-suggested-btn:hover {
   background: rgba(52, 211, 153, 0.3);
 }
+
+/* Version footer */
+.app-footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px 20px;
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-family: 'SF Mono', SFMono-Regular, ui-monospace, Menlo, monospace;
+}
+
+.footer-divider {
+  color: #374151;
+}
+
+.footer-mismatch {
+  color: #fbbf24;
+  font-weight: 600;
+  cursor: help;
+}

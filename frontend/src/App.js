@@ -9,6 +9,10 @@ import './App.css';
 
 const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/budget/api' : 'http://localhost:8000';
 
+// Baked in at build time by the build script (see package.json)
+const UI_VERSION = process.env.REACT_APP_GIT_SHA || 'dev';
+const UI_BUILD_TIME = process.env.REACT_APP_BUILD_TIME || '';
+
 function App() {
   const [transactions, setTransactions] = useState([]);
   const [rawTransactions, setRawTransactions] = useState([]);
@@ -29,7 +33,14 @@ function App() {
   const [showCategoryManagement, setShowCategoryManagement] = useState(false);
   const [overview, setOverview] = useState(null);
   const [recurring, setRecurring] = useState(null);
+  const [apiVersion, setApiVersion] = useState(null);
   const fetchInProgress = useRef(false);
+
+  useEffect(() => {
+    axios.get(`${API_BASE_URL}/version`)
+      .then(res => setApiVersion(res.data))
+      .catch(() => setApiVersion(null));
+  }, []);
 
   useEffect(() => {
     if (fetchInProgress.current) return;
@@ -228,6 +239,21 @@ function App() {
           </div>
         </div>
       </main>
+
+      <footer className="app-footer">
+        <span>UI {UI_VERSION}{UI_BUILD_TIME ? ` · built ${UI_BUILD_TIME}` : ''}</span>
+        <span className="footer-divider">|</span>
+        {apiVersion ? (
+          <span>API {apiVersion.version} · up since {apiVersion.started_at}</span>
+        ) : (
+          <span>API unreachable</span>
+        )}
+        {apiVersion && UI_VERSION !== 'dev' && apiVersion.version !== 'unknown' && apiVersion.version !== UI_VERSION && (
+          <span className="footer-mismatch" title="Frontend and backend are running different commits — rebuild the frontend or restart the backend (pm2 restart budget-backend)">
+            ⚠ version mismatch
+          </span>
+        )}
+      </footer>
 
       {showCategoryManagement && (
         <CategoryManagement onClose={() => setShowCategoryManagement(false)} />

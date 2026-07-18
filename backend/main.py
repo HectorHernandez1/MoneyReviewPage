@@ -20,9 +20,28 @@ from queries import (
     get_category_monthly_averages,
 )
 import calendar
+import os
+import subprocess
 import pandas as pd
 from datetime import datetime, date
 from typing import Optional, List, Any
+
+
+def _get_git_version():
+    """Short git hash of the checked-out code, resolved once at startup."""
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=os.path.dirname(os.path.abspath(__file__)),
+            stderr=subprocess.DEVNULL,
+            text=True,
+        ).strip()
+    except Exception:
+        return "unknown"
+
+
+APP_VERSION = _get_git_version()
+STARTED_AT = datetime.now().strftime("%Y-%m-%d %H:%M")
 
 app = FastAPI(title="Budget Data API")
 
@@ -42,6 +61,11 @@ app.add_middleware(
 @app.get("/")
 async def root():
     return {"message": "Budget Data API"}
+
+@app.get("/version")
+async def get_version():
+    """Deployed backend version, for checking whether an update is live"""
+    return {"version": APP_VERSION, "started_at": STARTED_AT}
 
 @app.get("/transactions")
 async def get_transactions(

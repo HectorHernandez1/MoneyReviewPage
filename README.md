@@ -55,7 +55,12 @@ sudo systemctl reload nginx
 
 # 4. Verify API connectivity
 curl -I http://localhost/budget/api/transactions
+
+# 5. Verify the update is live (should show the new commit hash)
+curl http://localhost/budget/api/version
 ```
+
+The dashboard footer also shows both versions — `UI <hash> · built <time> | API <hash>` — with a ⚠ warning if the frontend and backend are on different commits (rebuild the stale side or `pm2 restart budget-backend`).
 
 ## Development Setup
 
