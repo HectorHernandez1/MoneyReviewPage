@@ -280,16 +280,22 @@ const LineChart = ({ data, period, onDateClick, month, year, periodBudget, defau
             .style("fill", "#60a5fa");
         });
 
-      // Add x-axis with better formatting and fewer ticks
-      let xAxisFormat, tickCount;
+      // X-axis ticks: d3 treats ticks(count) as a hint for time scales and
+      // can massively overshoot it (e.g. 16 two-day ticks for a hint of 10),
+      // so compute an explicit interval that fits the actual pixel width.
+      const [domainStart, domainEnd] = xScale.domain();
+      let xAxisFormat, tickInterval;
 
       if (period === 'monthly') {
         xAxisFormat = d3.timeFormat("%m/%d");
-        tickCount = Math.min(processedData.length, 10); // Limit to 10 ticks max
+        const days = Math.max(1, Math.round((domainEnd - domainStart) / 86400000));
+        const desired = Math.max(3, Math.min(10, Math.floor(width / 55)));
+        tickInterval = d3.timeDay.every(Math.max(1, Math.ceil(days / desired)));
       } else {
-        // For yearly, show months
         xAxisFormat = d3.timeFormat("%b %Y");
-        tickCount = Math.min(processedData.length, 12); // Show up to 12 months
+        const months = Math.max(1, Math.round((domainEnd - domainStart) / (86400000 * 30)));
+        const desired = Math.max(3, Math.min(12, Math.floor(width / 75)));
+        tickInterval = d3.timeMonth.every(Math.max(1, Math.ceil(months / desired)));
       }
 
       g.append("g")
@@ -297,7 +303,7 @@ const LineChart = ({ data, period, onDateClick, month, year, periodBudget, defau
         .attr("transform", `translate(0,${height})`)
         .call(d3.axisBottom(xScale)
           .tickFormat(xAxisFormat)
-          .ticks(tickCount)
+          .ticks(tickInterval)
         )
         .selectAll("text")
         .style("fill", "#d1d5db")
