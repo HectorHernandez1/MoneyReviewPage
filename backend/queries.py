@@ -389,6 +389,35 @@ def handle_list_categories(args):
     return _run_query(query, [])
 
 
+def get_category_monthly_averages(lookback_months=6):
+    """Per-category average and max monthly spend over the last N full months.
+
+    The current partial month is excluded so averages aren't diluted.
+    Averages are taken over months where the category had spending.
+    Used by the dashboard to suggest realistic budget limits.
+    """
+    lookback = _clamp_limit(lookback_months, 6, 24)
+    query = f"""
+        SELECT category,
+               ROUND(AVG(monthly_total)::numeric, 2) AS avg_monthly_spend,
+               ROUND(MAX(monthly_total)::numeric, 2) AS max_monthly_spend,
+               COUNT(*) AS months_with_spending
+        FROM (
+            SELECT spending_category AS category,
+                   date_trunc('month', transaction_date) AS month,
+                   SUM(amount) AS monthly_total
+            FROM budget_app.transactions_view
+            WHERE spending_category NOT IN {EXCLUDED_CATEGORIES}
+              AND transaction_date >= date_trunc('month', CURRENT_DATE) - INTERVAL '1 month' * %s
+              AND transaction_date < date_trunc('month', CURRENT_DATE)
+            GROUP BY 1, 2
+        ) monthly
+        GROUP BY category
+        ORDER BY avg_monthly_spend DESC
+    """
+    return _run_query(query, [lookback])
+
+
 TOOL_HANDLERS = {
     "get_spending_by_category": handle_get_spending_by_category,
     "get_merchant_spending": handle_get_merchant_spending,
