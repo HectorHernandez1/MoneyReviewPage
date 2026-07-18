@@ -69,7 +69,7 @@ See `CLAUDE.md` for complete deployment documentation.
 
 ## AI Chatbot
 
-A floating chat bubble on the dashboard answers budget questions ("What did I spend on groceries last month?", "Do I have any subscriptions?") by querying the database through 10 SQL-backed tools. The backend is stateless — conversation history lives in the frontend.
+A floating chat bubble on the dashboard answers budget questions ("What did I spend on groceries last month?", "Which credit cards did I use in June?") by querying the database through 11 SQL-backed tools. The backend is stateless — conversation history lives in the frontend (and is cached in localStorage so it survives page reloads).
 
 ### Model Provider Configuration
 Set in `backend/.env`:
@@ -125,6 +125,11 @@ curl -X POST http://localhost:8000/chat \
 ## Features
 - Monthly, Quarterly, and Year-to-Date views
 - Interactive D3.js visualizations  
+- Budget vs Actual panel with per-category progress bars and pace markers
+- Spending pace: projected end-of-month total and comparison to last month at the same point
+- Cumulative spending view with a budget-pace line on the trend chart
+- Recurring-charges panel (likely subscriptions with estimated monthly total)
+- Suggested budget limits from recent monthly averages in Manage Categories
 - Spending category analysis
 - Multi-user support
 - AI chatbot for natural-language spending questions (markdown-rendered replies)
