@@ -35,6 +35,14 @@ function ChatBot({ filters }) {
     }
   }, [isOpen]);
 
+  // Auto-grow the input with its content, up to the CSS max-height
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [input, isOpen]);
+
   // Resize handlers
   const startResize = (e, direction) => {
     e.preventDefault();
@@ -223,14 +231,14 @@ function ChatBot({ filters }) {
               </div>
 
               <form className="chat-input-area" onSubmit={handleSubmit}>
-                <input
+                <textarea
                   ref={inputRef}
-                  type="text"
                   className="chat-input"
+                  rows={1}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Ask about your spending..."
+                  placeholder="Ask about your spending... (Shift+Enter for new line)"
                   disabled={loading}
                 />
                 <button type="submit" className="chat-send-btn" disabled={!input.trim() || loading}>
