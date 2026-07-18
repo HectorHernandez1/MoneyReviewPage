@@ -15,6 +15,14 @@ const IS_PROD_BUILD = process.env.NODE_ENV === 'production';
 const UI_VERSION = process.env.REACT_APP_GIT_SHA || (IS_PROD_BUILD ? 'unknown' : 'dev');
 const UI_BUILD_TIME = process.env.REACT_APP_BUILD_TIME || '';
 
+// Just the number for the header/tab ("v104"); the full v104-<sha> stays in
+// tooltips and the footer for debugging
+const shortVersion = (v) => {
+  const match = /^v\d+/.exec(v || '');
+  return match ? match[0] : v;
+};
+const UI_VERSION_SHORT = shortVersion(UI_VERSION);
+
 function App() {
   const [transactions, setTransactions] = useState([]);
   const [rawTransactions, setRawTransactions] = useState([]);
@@ -50,7 +58,7 @@ function App() {
 
   // Show the deployed version in the browser tab as well
   useEffect(() => {
-    document.title = `Budget Dashboard · ${UI_VERSION}`;
+    document.title = `Budget Dashboard · ${UI_VERSION_SHORT}`;
   }, []);
 
   // Non-null when the deployed versions can't be trusted; shown in the
@@ -208,9 +216,9 @@ function App() {
             className={`app-version-badge${versionProblem ? ' badge-warn' : ''}`}
             title={versionProblem
               ? `⚠ ${versionProblem} — ${versionHelp[versionProblem]}`
-              : `${UI_BUILD_TIME ? `built ${UI_BUILD_TIME}` : 'app version'}${apiVersion ? ` · API ${apiVersion.version}` : ''}`}
+              : `${UI_VERSION}${UI_BUILD_TIME ? ` · built ${UI_BUILD_TIME}` : ''}${apiVersion ? ` · API ${apiVersion.version}` : ''}`}
           >
-            {versionProblem ? `⚠ ${UI_VERSION}` : UI_VERSION}
+            {versionProblem ? `⚠ ${UI_VERSION_SHORT}` : UI_VERSION_SHORT}
           </span>
         </h1>
         <div className="header-actions">
