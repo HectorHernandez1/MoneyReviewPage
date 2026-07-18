@@ -8,7 +8,7 @@ set -e
 
 # Configuration
 DEPLOY_DIR="/var/www/sites/budget"
-STAGING_DIR="~/deployment/budget"
+STAGING_DIR="$HOME/deployment/budget"
 SERVER_IP="your-server.local"
 
 # Colors for output
@@ -45,14 +45,17 @@ sudo chown -R hector:hector /var/www/sites/
 # Step 2: Check if we're already in the right directory or copy from staging
 if [ "$PWD" = "$DEPLOY_DIR" ]; then
     log_info "Already in deployment directory, skipping file copy..."
+    SOURCE_DIR="$PWD"
 else
     log_info "Copying files from staging..."
     if [ -d "$STAGING_DIR" ]; then
+        SOURCE_DIR="$STAGING_DIR"
         cp -r $STAGING_DIR/* $DEPLOY_DIR/
     else
         # Try to find project files in current directory
         if [ -f "run-backend.sh" ] && [ -d "backend" ] && [ -d "frontend" ]; then
             log_info "Found project files in current directory, copying to $DEPLOY_DIR..."
+            SOURCE_DIR="$PWD"
             cp -r ./* $DEPLOY_DIR/
         else
             log_error "Project files not found!"
@@ -61,6 +64,19 @@ else
         fi
     fi
 fi
+
+# Stamp the deployed version from the source tree (prod's .git may be stale
+# or missing — the copy above doesn't include it, so it must never be asked).
+# Format: v<commit count>-<short sha>, e.g. v58-71e7e0f
+GIT_SHA=$(git -C "$SOURCE_DIR" rev-parse --short HEAD 2>/dev/null || echo "")
+if [ -n "$GIT_SHA" ]; then
+    BUILD_NUM=$(git -C "$SOURCE_DIR" rev-list --count HEAD 2>/dev/null || echo "0")
+    VERSION="v${BUILD_NUM}-${GIT_SHA}"
+else
+    VERSION="unknown"
+fi
+echo "$VERSION" > $DEPLOY_DIR/VERSION
+log_info "Deploying version $VERSION"
 
 # Step 3: Setup backend
 log_info "Setting up backend..."
@@ -109,9 +125,9 @@ log_info "Creating build environment..."
 echo "ESLINT_NO_DEV_ERRORS=true" > .env.local
 echo "GENERATE_SOURCEMAP=false" >> .env.local
 
-# Build production version with correct base path
+# Build production version with correct base path and the stamped version
 log_info "Building frontend for production..."
-CI=false npm run build
+REACT_APP_GIT_SHA="$VERSION" REACT_APP_BUILD_TIME="$(date '+%Y-%m-%d %H:%M')" CI=false npm run build
 
 # Step 5: Install system dependencies
 log_info "Installing system dependencies..."

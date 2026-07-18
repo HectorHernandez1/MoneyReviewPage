@@ -74,4 +74,4 @@ secrets.yml
 # Backup files
 *.bak
 *.backup
-*~
+*~VERSION

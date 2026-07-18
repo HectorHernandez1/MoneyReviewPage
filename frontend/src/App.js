@@ -9,8 +9,10 @@ import './App.css';
 
 const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/budget/api' : 'http://localhost:8000';
 
-// Baked in at build time by the build script (see package.json)
-const UI_VERSION = process.env.REACT_APP_GIT_SHA || 'dev';
+// Stamped into the build by the deploy scripts (REACT_APP_GIT_SHA); a
+// production build without a stamp is a broken deploy, not a quiet default
+const IS_PROD_BUILD = process.env.NODE_ENV === 'production';
+const UI_VERSION = process.env.REACT_APP_GIT_SHA || (IS_PROD_BUILD ? 'unknown' : 'dev');
 const UI_BUILD_TIME = process.env.REACT_APP_BUILD_TIME || '';
 
 function App() {
@@ -40,6 +42,11 @@ function App() {
     axios.get(`${API_BASE_URL}/version`)
       .then(res => setApiVersion(res.data))
       .catch(() => setApiVersion(null));
+  }, []);
+
+  // Show the deployed version in the browser tab as well
+  useEffect(() => {
+    document.title = `Budget Dashboard · ${UI_VERSION}`;
   }, []);
 
   useEffect(() => {
@@ -248,11 +255,24 @@ function App() {
         ) : (
           <span>API unreachable</span>
         )}
-        {apiVersion && UI_VERSION !== 'dev' && apiVersion.version !== 'unknown' && apiVersion.version !== UI_VERSION && (
-          <span className="footer-mismatch" title="Frontend and backend are running different commits — rebuild the frontend or restart the backend (pm2 restart budget-backend)">
-            ⚠ version mismatch
-          </span>
-        )}
+        {(() => {
+          if (!IS_PROD_BUILD || !apiVersion) return null;
+          if (UI_VERSION === 'unknown' || apiVersion.version === 'unknown') {
+            return (
+              <span className="footer-mismatch" title="The deploy did not stamp a version — deploy with ./manage-production.sh update or ./deploy-production.sh so VERSION is written and baked into the build">
+                ⚠ version unavailable
+              </span>
+            );
+          }
+          if (apiVersion.version !== UI_VERSION) {
+            return (
+              <span className="footer-mismatch" title="Frontend and backend are running different commits — rebuild the frontend or restart the backend (pm2 restart budget-backend)">
+                ⚠ version mismatch
+              </span>
+            );
+          }
+          return null;
+        })()}
       </footer>
 
       {showCategoryManagement && (

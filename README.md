@@ -40,27 +40,32 @@ chmod +x deploy-production.sh
 ```
 
 ### Manual Update Process
+Prefer `./manage-production.sh update` — it stamps the deployed version automatically. If updating by hand:
 ```bash
 # 1. Update code
 cd /var/www/sites/budget
 git pull
 
-# 2. Rebuild frontend (required for API config changes)  
-cd frontend
-CI=false npm run build
+# 2. Stamp the version being deployed (v<commit count>-<short sha>)
+VERSION="v$(git rev-list --count HEAD)-$(git rev-parse --short HEAD)"
+echo "$VERSION" > VERSION
 
-# 3. Restart services
+# 3. Rebuild frontend with the version baked in
+cd frontend
+REACT_APP_GIT_SHA="$VERSION" REACT_APP_BUILD_TIME="$(date '+%Y-%m-%d %H:%M')" CI=false npm run build
+
+# 4. Restart services (after VERSION is written, so the backend reads the new stamp)
 pm2 restart budget-backend
 sudo systemctl reload nginx
 
-# 4. Verify API connectivity
+# 5. Verify API connectivity
 curl -I http://localhost/budget/api/transactions
 
-# 5. Verify the update is live (should show the new commit hash)
+# 6. Verify the update is live (should show the new version)
 curl http://localhost/budget/api/version
 ```
 
-The dashboard footer also shows both versions — `UI <hash> · built <time> | API <hash>` — with a ⚠ warning if the frontend and backend are on different commits (rebuild the stale side or `pm2 restart budget-backend`).
+The version (e.g. `v58-71e7e0f`) appears in the browser tab title and the dashboard footer — `UI v58-71e7e0f · built <time> | API v58-71e7e0f` — with a ⚠ warning if the frontend and backend differ (stale build or unrestarted pm2) or if a production build is missing its stamp. The number goes up on every deploy, so "did the update land?" is one glance at the tab.
 
 ## Development Setup
 

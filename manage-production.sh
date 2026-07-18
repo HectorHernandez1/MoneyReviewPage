@@ -112,23 +112,34 @@ show_logs() {
 
 update_deployment() {
     log_info "Updating deployment from git..."
-    
+
     # Pull latest changes
     cd ~/deployment/budget
     git pull
-    
-    # Copy to production
+
+    # Stamp the deployed version from the source tree that actually pulled.
+    # Prod's own .git is stale (cp -r doesn't copy it), so nothing on the
+    # deploy target may ask git what version it is — the stamp is the truth.
+    # Format: v<commit count>-<short sha>, e.g. v58-71e7e0f — the number
+    # increases every deploy so it's easy to see at a glance.
+    GIT_SHA=$(git -C ~/deployment/budget rev-parse --short HEAD)
+    BUILD_NUM=$(git -C ~/deployment/budget rev-list --count HEAD)
+    VERSION="v${BUILD_NUM}-${GIT_SHA}"
+    echo "$VERSION" > ~/deployment/budget/VERSION
+    log_info "Deploying version $VERSION"
+
+    # Copy to production (includes the VERSION stamp)
     cp -r ~/deployment/budget/* $DEPLOY_DIR/
-    
-    # Rebuild frontend
+
+    # Rebuild frontend with the stamped version baked in
     log_info "Rebuilding frontend..."
     cd $DEPLOY_DIR/frontend
     npm install
-    CI=false npm run build
-    
-    # Restart services
+    REACT_APP_GIT_SHA="$VERSION" REACT_APP_BUILD_TIME="$(date '+%Y-%m-%d %H:%M')" CI=false npm run build
+
+    # Restart services (after VERSION is in place, so the backend reads the new stamp)
     restart_services
-    
+
     log_info "Update completed!"
 }
 

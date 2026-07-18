@@ -21,26 +21,27 @@ from queries import (
 )
 import calendar
 import os
-import subprocess
 import pandas as pd
 from datetime import datetime, date
 from typing import Optional, List, Any
 
 
-def _get_git_version():
-    """Short git hash of the checked-out code, resolved once at startup."""
+def _get_version():
+    """Deployed version from the VERSION stamp written by the deploy scripts.
+
+    The deploy target is a file copy, not a live git checkout, so asking git
+    here would report whatever commit this directory was cloned at long ago.
+    Only the deploy-time stamp knows what was actually shipped.
+    """
     try:
-        return subprocess.check_output(
-            ["git", "rev-parse", "--short", "HEAD"],
-            cwd=os.path.dirname(os.path.abspath(__file__)),
-            stderr=subprocess.DEVNULL,
-            text=True,
-        ).strip()
+        stamp = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "VERSION")
+        with open(stamp) as f:
+            return f.read().strip() or "unknown"
     except Exception:
         return "unknown"
 
 
-APP_VERSION = _get_git_version()
+APP_VERSION = _get_version()
 STARTED_AT = datetime.now().strftime("%Y-%m-%d %H:%M")
 
 app = FastAPI(title="Budget Data API")
