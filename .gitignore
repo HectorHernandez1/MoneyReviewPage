@@ -74,4 +74,11 @@ secrets.yml
 # Backup files
 *.bak
 *.backup
-*~VERSION
+*~
+
+# Deploy-generated version stamp (written by deploy scripts, never committed)
+VERSION
+
+# Auto-deploy runtime files
+auto-deploy.status
+auto-deploy.log

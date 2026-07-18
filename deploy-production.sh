@@ -45,7 +45,12 @@ sudo chown -R hector:hector /var/www/sites/
 # Step 2: Check if we're already in the right directory or copy from staging
 if [ "$PWD" = "$DEPLOY_DIR" ]; then
     log_info "Already in deployment directory, skipping file copy..."
-    SOURCE_DIR="$PWD"
+    # Prod's own .git is stale — stamp from the staging checkout if it exists
+    if [ -d "$STAGING_DIR/.git" ]; then
+        SOURCE_DIR="$STAGING_DIR"
+    else
+        SOURCE_DIR="$PWD"
+    fi
 else
     log_info "Copying files from staging..."
     if [ -d "$STAGING_DIR" ]; then
