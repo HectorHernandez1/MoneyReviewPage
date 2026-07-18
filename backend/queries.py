@@ -134,19 +134,27 @@ def handle_get_category_budget_status(args):
     if isinstance(results, dict) and "error" in results:
         return results
 
+    # Limits are monthly amounts; a yearly query compares a year of spending
+    # against a year of budget (custom date ranges keep the monthly limit).
+    is_yearly = args.get("period") == "yearly" and not args.get("start_date") and not args.get("end_date")
+    months_multiplier = 12 if is_yearly else 1
+
     for row in results:
         limit = row.get("budget_limit")
         spent = row.get("spent", 0)
         if limit and float(limit) > 0:
-            row["remaining"] = round(float(limit) - float(spent), 2)
-            row["percent_used"] = round(float(spent) / float(limit) * 100, 1)
-            row["status"] = "over" if float(spent) > float(limit) else "under"
+            row["monthly_limit"] = float(limit)
+            effective_limit = float(limit) * months_multiplier
+            row["remaining"] = round(effective_limit - float(spent), 2)
+            row["percent_used"] = round(float(spent) / effective_limit * 100, 1)
+            row["status"] = "over" if float(spent) > effective_limit else "under"
+            row["budget_limit"] = effective_limit
         else:
+            row["monthly_limit"] = None
             row["remaining"] = None
             row["percent_used"] = None
             row["status"] = "no_limit"
-        # Convert Decimal to float for JSON serialization
-        row["budget_limit"] = float(limit) if limit else None
+            row["budget_limit"] = None
         row["spent"] = float(spent)
 
     return results

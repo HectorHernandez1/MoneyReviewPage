@@ -52,7 +52,7 @@ const Dashboard = ({
           onDateClick={onDateClick}
           month={month}
           year={year}
-          monthlyBudget={overview?.totals?.total_limit || 0}
+          periodBudget={overview?.totals?.total_limit || 0}
         />
       </div>
 

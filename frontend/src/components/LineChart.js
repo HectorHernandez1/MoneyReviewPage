@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 
-const LineChart = ({ data, period, onDateClick, month, year, monthlyBudget }) => {
+const LineChart = ({ data, period, onDateClick, month, year, periodBudget }) => {
   const svgRef = useRef();
   const [view, setView] = useState('daily');
 
@@ -109,10 +109,10 @@ const LineChart = ({ data, period, onDateClick, month, year, monthlyBudget }) =>
 
       // Cumulative view: running total, budget pace line across the full period
       const cumulative = view === 'cumulative';
+      // periodBudget arrives already scaled to the period (monthly limit
+      // for monthly view, annual budget for yearly view)
       const [periodStart, periodEnd] = getPeriodBounds(processedData[0].date);
-      const budgetForPeriod = cumulative && monthlyBudget > 0
-        ? (period === 'yearly' ? monthlyBudget * 12 : monthlyBudget)
-        : 0;
+      const budgetForPeriod = cumulative && periodBudget > 0 ? periodBudget : 0;
 
       if (cumulative) {
         let running = 0;
@@ -345,7 +345,7 @@ const LineChart = ({ data, period, onDateClick, month, year, monthlyBudget }) =>
       // Clean up any existing tooltips
       d3.selectAll(".chart-tooltip").remove();
     };
-  }, [data, period, view, month, year, monthlyBudget]);
+  }, [data, period, view, month, year, periodBudget]);
 
   return (
     <div className="line-chart-wrap">
