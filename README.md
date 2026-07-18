@@ -1,6 +1,6 @@
 # Money Review Page
 
-A personal budget dashboard application that visualizes and analyzes your financial data with interactive charts and multiple time period views.
+A personal budget dashboard application that visualizes and analyzes your financial data with interactive charts, multiple time period views, and an AI chatbot that answers natural-language questions about your spending.
 
 ## Production Deployment (Ubuntu Server)
 
@@ -60,11 +60,24 @@ curl -I http://localhost/budget/api/transactions
 ## Development Setup
 
 1. **Set up database connection**: Copy `backend/.env.template` to `backend/.env` and add your PostgreSQL credentials
-2. **Start backend**: `cd backend && pip install -r requirements.txt && python main.py`  
-3. **Start frontend**: `cd frontend && npm install && npm start`
-4. **View dashboard**: Open http://localhost:3000
+2. **Configure the AI chatbot**: In `backend/.env`, set the API key for your chosen LLM provider (see below)
+3. **Start backend**: `cd backend && pip install -r requirements.txt && python main.py`  
+4. **Start frontend**: `cd frontend && npm install && npm start`
+5. **View dashboard**: Open http://localhost:3000
 
 See `CLAUDE.md` for complete deployment documentation.
+
+## AI Chatbot
+
+A floating chat bubble on the dashboard answers budget questions ("What did I spend on groceries last month?", "Do I have any subscriptions?") by querying the database through 10 SQL-backed tools. The backend is stateless — conversation history lives in the frontend.
+
+### Model Provider Configuration
+Set in `backend/.env`:
+- `LLM_PROVIDER` — `anthropic` (default), `openai`, `deepseek`, or `glm`
+- `LLM_MODEL` — optional override; defaults: `claude-sonnet-5` / `gpt-5.6-luna` / `deepseek-v4-flash` / `glm-5.2`
+- API key for the selected provider: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `DEEPSEEK_API_KEY`, or `GLM_API_KEY`
+
+DeepSeek and GLM use the OpenAI-compatible client with provider-specific base URLs. Key backend files: `backend/chatbot.py` (prompt + tool execution), `backend/models.py` (provider abstraction), `backend/tools.py` (tool schemas and SQL queries).
 
 ## Key Configuration
 
@@ -96,6 +109,14 @@ sudo nano /etc/nginx/sites-available/budget
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
+### Chatbot Returns 503
+The API key for the selected `LLM_PROVIDER` is missing from `backend/.env`. Add it and restart the backend:
+```bash
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "What are my top categories?", "filters": {"period": "monthly", "month": "2026-02"}}'
+```
+
 ### Chrome Browser Issues  
 - **Issue**: Chrome blocks local network requests
 - **Solution**: Use Safari/Firefox or disable Chrome security flags
@@ -106,11 +127,13 @@ sudo nginx -t && sudo systemctl reload nginx
 - Interactive D3.js visualizations  
 - Spending category analysis
 - Multi-user support
+- AI chatbot for natural-language spending questions (markdown-rendered replies)
 - Responsive design
 
 ## Tech Stack
 - **Backend**: FastAPI + SQLAlchemy + PostgreSQL
 - **Frontend**: React + D3.js
+- **AI**: Anthropic Claude (default), OpenAI, DeepSeek, or GLM via a provider abstraction
 - **Deployment**: PM2 + Nginx + Ubuntu
 - **Styling**: CSS Grid + Flexbox
 
