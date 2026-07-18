@@ -27,6 +27,8 @@ function App() {
   const [loadingTransactions, setLoadingTransactions] = useState(false);
   const [categoryLimitInfo, setCategoryLimitInfo] = useState(null);
   const [showCategoryManagement, setShowCategoryManagement] = useState(false);
+  const [overview, setOverview] = useState(null);
+  const [recurring, setRecurring] = useState(null);
   const fetchInProgress = useRef(false);
 
   useEffect(() => {
@@ -68,11 +70,15 @@ function App() {
         params.append('year', year);
       }
 
-      const [transactionsRes, categoriesRes, rawTransactionsRes, limitsRes] = await Promise.all([
+      const recurringParams = new URLSearchParams({ user });
+
+      const [transactionsRes, categoriesRes, rawTransactionsRes, limitsRes, overviewRes, recurringRes] = await Promise.all([
         axios.get(`${API_BASE_URL}/transactions?${params.toString()}`),
         axios.get(`${API_BASE_URL}/categories?${params.toString()}`),
         axios.get(`${API_BASE_URL}/raw-transactions?${params.toString()}`),
-        axios.get(`${API_BASE_URL}/categories-with-limits`)
+        axios.get(`${API_BASE_URL}/categories-with-limits`),
+        axios.get(`${API_BASE_URL}/budget-overview?${params.toString()}`),
+        axios.get(`${API_BASE_URL}/recurring-charges?${recurringParams.toString()}`)
       ]);
 
       setTransactions(transactionsRes.data.data);
@@ -80,6 +86,8 @@ function App() {
       setCategories(categoriesRes.data.categories);
       setRawTransactions(rawTransactionsRes.data.data);
       setCategoryLimits(limitsRes.data.categories || []);
+      setOverview(overviewRes.data);
+      setRecurring(recurringRes.data);
     } catch (error) {
       console.error('Error fetching data:', error);
     }
@@ -199,7 +207,11 @@ function App() {
                   categories={categories}
                   categoryLimits={categoryLimits}
                   summary={summary}
+                  overview={overview}
+                  recurring={recurring}
                   period={period}
+                  month={month}
+                  year={year}
                   onCategoryClick={handleCategoryClick}
                   selectedCategory={selectedCategory}
                   categoryTransactions={categoryTransactions}

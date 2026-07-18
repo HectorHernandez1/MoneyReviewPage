@@ -14,6 +14,7 @@ const CategoryManagement = ({ onClose }) => {
     const [newCategoryLimit, setNewCategoryLimit] = useState('0');
     const [successMessage, setSuccessMessage] = useState(null);
     const [errorMessage, setErrorMessage] = useState(null);
+    const [suggestions, setSuggestions] = useState({});
 
     useEffect(() => {
         fetchCategories();
@@ -22,14 +23,31 @@ const CategoryManagement = ({ onClose }) => {
     const fetchCategories = async () => {
         setLoading(true);
         try {
-            const response = await fetch(`${API_BASE_URL}/categories-with-limits`);
-            const data = await response.json();
+            const [catRes, suggRes] = await Promise.all([
+                fetch(`${API_BASE_URL}/categories-with-limits`),
+                fetch(`${API_BASE_URL}/category-suggested-limits`)
+            ]);
+            const data = await catRes.json();
             setCategories(data.categories || []);
+
+            const suggData = await suggRes.json();
+            const byCategory = {};
+            (suggData.suggestions || []).forEach(s => {
+                byCategory[s.category.toLowerCase()] = s;
+            });
+            setSuggestions(byCategory);
         } catch (error) {
             console.error('Error fetching categories:', error);
             showError('Failed to load categories');
         }
         setLoading(false);
+    };
+
+    // Round the recent average up to the nearest $10 for a realistic limit
+    const suggestedLimitFor = (categoryName) => {
+        const s = suggestions[categoryName.toLowerCase()];
+        if (!s || !s.avg_monthly_spend) return null;
+        return Math.ceil(parseFloat(s.avg_monthly_spend) / 10) * 10;
     };
 
     const handleEditClick = (category) => {
@@ -164,6 +182,7 @@ const CategoryManagement = ({ onClose }) => {
                                         <tr>
                                             <th>Category Name</th>
                                             <th>Spending Limit</th>
+                                            <th>Avg / Month</th>
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
@@ -185,6 +204,27 @@ const CategoryManagement = ({ onClose }) => {
                                                     ) : (
                                                         formatCurrency(category.spending_limit)
                                                     )}
+                                                </td>
+                                                <td className="category-avg">
+                                                    {(() => {
+                                                        const s = suggestions[category.category_name.toLowerCase()];
+                                                        if (!s) return <span className="no-avg">—</span>;
+                                                        return (
+                                                            <span title={`Average over ${s.months_with_spending} recent month(s) with spending; max month ${formatCurrency(s.max_monthly_spend)}`}>
+                                                                {formatCurrency(s.avg_monthly_spend)}
+                                                                {editingCategory === category.category_name && suggestedLimitFor(category.category_name) !== null && (
+                                                                    <button
+                                                                        type="button"
+                                                                        className="use-suggested-btn"
+                                                                        onClick={() => setEditValue(String(suggestedLimitFor(category.category_name)))}
+                                                                        title="Set the limit to the recent average, rounded up to the nearest $10"
+                                                                    >
+                                                                        Use {formatCurrency(suggestedLimitFor(category.category_name))}
+                                                                    </button>
+                                                                )}
+                                                            </span>
+                                                        );
+                                                    })()}
                                                 </td>
                                                 <td className="category-actions">
                                                     {editingCategory === category.category_name ? (

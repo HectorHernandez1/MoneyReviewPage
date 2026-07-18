@@ -3,6 +3,8 @@ import BarChart from './BarChart';
 import LineChart from './LineChart';
 import SummaryCards from './SummaryCards';
 import TransactionTable from './TransactionTable';
+import BudgetOverviewPanel from './BudgetOverviewPanel';
+import RecurringChargesPanel from './RecurringChargesPanel';
 
 const Dashboard = ({
   transactions,
@@ -10,7 +12,11 @@ const Dashboard = ({
   categories,
   categoryLimits,
   summary,
+  overview,
+  recurring,
   period,
+  month,
+  year,
   onCategoryClick,
   selectedCategory,
   categoryTransactions,
@@ -32,12 +38,22 @@ const Dashboard = ({
 
   return (
     <div className="dashboard">
-      <SummaryCards summary={summary} />
+      <SummaryCards summary={summary} overview={overview} />
+
+      {/* Budget vs Actual panel */}
+      <BudgetOverviewPanel overview={overview} onCategoryClick={onCategoryClick} />
 
       {/* Line Chart at the top */}
       <div className="chart-section line-chart-section">
         <h2>Spending Trend - {getTimeframeName()}</h2>
-        <LineChart data={rawTransactions} period={period} onDateClick={onDateClick} />
+        <LineChart
+          data={rawTransactions}
+          period={period}
+          onDateClick={onDateClick}
+          month={month}
+          year={year}
+          monthlyBudget={overview?.totals?.total_limit || 0}
+        />
       </div>
 
       {/* Transaction Table Section - For Date */}
@@ -67,6 +83,12 @@ const Dashboard = ({
           onTransactionUpdate={onTransactionUpdate}
         />
       )}
+
+      {/* Recurring charges / subscriptions */}
+      <RecurringChargesPanel
+        recurring={recurring?.recurring}
+        estimatedTotal={recurring?.estimated_monthly_total}
+      />
 
 
       {loadingTransactions && (

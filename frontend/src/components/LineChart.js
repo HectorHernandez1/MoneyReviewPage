@@ -1,8 +1,25 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 
-const LineChart = ({ data, period, onDateClick }) => {
+const LineChart = ({ data, period, onDateClick, month, year, monthlyBudget }) => {
   const svgRef = useRef();
+  const [view, setView] = useState('daily');
+
+  // First/last day of the displayed period, for the cumulative x-axis and pace line
+  const getPeriodBounds = (fallbackDate) => {
+    if (period === 'monthly') {
+      let y, m;
+      if (month) {
+        [y, m] = month.split('-').map(Number);
+      } else {
+        y = fallbackDate.getFullYear();
+        m = fallbackDate.getMonth() + 1;
+      }
+      return [new Date(y, m - 1, 1), new Date(y, m, 0)];
+    }
+    const y = year || fallbackDate.getFullYear();
+    return [new Date(y, 0, 1), new Date(y, 11, 31)];
+  };
 
   const renderChart = () => {
     if (!data || data.length === 0) return;
@@ -90,14 +107,50 @@ const LineChart = ({ data, period, onDateClick }) => {
 
       if (processedData.length === 0) return;
 
+      // Cumulative view: running total, budget pace line across the full period
+      const cumulative = view === 'cumulative';
+      const [periodStart, periodEnd] = getPeriodBounds(processedData[0].date);
+      const budgetForPeriod = cumulative && monthlyBudget > 0
+        ? (period === 'yearly' ? monthlyBudget * 12 : monthlyBudget)
+        : 0;
+
+      if (cumulative) {
+        let running = 0;
+        processedData = processedData.map(d => {
+          running += d.amount;
+          return { ...d, amount: running };
+        });
+      }
+
       // Create scales
       const xScale = d3.scaleTime()
-        .domain(d3.extent(processedData, d => d.date))
+        .domain(cumulative ? [periodStart, periodEnd] : d3.extent(processedData, d => d.date))
         .range([0, width]);
 
       const yScale = d3.scaleLinear()
-        .domain([0, d3.max(processedData, d => d.amount)])
+        .domain([0, Math.max(d3.max(processedData, d => d.amount), budgetForPeriod || 0)])
         .range([height, 0]);
+
+      // Dashed budget pace line: $0 at period start to the full budget at period end
+      if (budgetForPeriod > 0) {
+        g.append("line")
+          .attr("x1", xScale(periodStart))
+          .attr("y1", yScale(0))
+          .attr("x2", xScale(periodEnd))
+          .attr("y2", yScale(budgetForPeriod))
+          .style("stroke", "#fbbf24")
+          .style("stroke-width", 2)
+          .style("stroke-dasharray", "6,4")
+          .style("opacity", 0.8);
+
+        g.append("text")
+          .attr("x", width - 4)
+          .attr("y", yScale(budgetForPeriod) - 6)
+          .attr("text-anchor", "end")
+          .style("fill", "#fbbf24")
+          .style("font-size", "11px")
+          .text(`Budget pace → $${d3.format(",.0f")(budgetForPeriod)}`);
+      }
 
       // Add grid lines
       // Horizontal grid lines
@@ -191,7 +244,7 @@ const LineChart = ({ data, period, onDateClick }) => {
             tooltip.style("visibility", "visible")
               .html(`
                 <div><strong>Date:</strong> ${d.label} (${dayOfWeek})</div>
-                <div><strong>Amount:</strong> $${d3.format(",.2f")(d.amount)}</div>
+                <div><strong>${cumulative ? 'Total so far' : 'Amount'}:</strong> $${d3.format(",.2f")(d.amount)}</div>
               `)
               .style("left", (event.pageX + 10) + "px")
               .style("top", (event.pageY - 10) + "px");
@@ -292,9 +345,28 @@ const LineChart = ({ data, period, onDateClick }) => {
       // Clean up any existing tooltips
       d3.selectAll(".chart-tooltip").remove();
     };
-  }, [data, period]);
+  }, [data, period, view, month, year, monthlyBudget]);
 
-  return <svg ref={svgRef} style={{ width: '100%', height: 'auto' }}></svg>;
+  return (
+    <div className="line-chart-wrap">
+      <div className="chart-view-toggle">
+        <button
+          className={view === 'daily' ? 'active' : ''}
+          onClick={() => setView('daily')}
+        >
+          {period === 'yearly' ? 'Monthly' : 'Daily'}
+        </button>
+        <button
+          className={view === 'cumulative' ? 'active' : ''}
+          onClick={() => setView('cumulative')}
+          title="Running total vs budget pace"
+        >
+          Cumulative
+        </button>
+      </div>
+      <svg ref={svgRef} style={{ width: '100%', height: 'auto' }}></svg>
+    </div>
+  );
 };
 
 export default LineChart;
