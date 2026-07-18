@@ -11,6 +11,13 @@ PLACEHOLDER="your-server.local"
 # Derived, not hardcoded — this script is committed to a public repo
 REAL_HOSTNAME="$(hostname).local"
 
+# Cron runs with a minimal PATH (no npm/pm2 — a deploy once died at
+# 'npm: command not found'). Source nvm if present and include the
+# usual global bin dirs so the node tooling resolves under cron.
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" >/dev/null 2>&1
+export PATH="$PATH:/usr/local/bin"
+
 # Files that need hostname replacement
 HOSTNAME_FILES=(
     "README.md"
@@ -61,16 +68,22 @@ cd "$STAGING_DIR" || fail "Cannot cd to $STAGING_DIR"
 # Fetch latest from origin
 git fetch origin 2>&1
 
-LOCAL_HEAD=$(git rev-parse HEAD)
-REMOTE_HEAD=$(git rev-parse origin/main)
+REMOTE_HEAD=$(git rev-parse origin/main) || fail "cannot resolve origin/main"
 
-if [ "$LOCAL_HEAD" = "$REMOTE_HEAD" ]; then
-    log "No new commits. Local and remote both at ${LOCAL_HEAD:0:7}."
-    status "OK" "no new commits; at ${LOCAL_HEAD:0:7}"
+# Compare against what was actually DEPLOYED, not against staging HEAD.
+# Staging HEAD is wrong twice: a manual pull in staging makes new commits
+# look already-handled (they never deploy), and a failed deploy has already
+# advanced HEAD so it never retries. The marker is written only after a
+# fully successful deploy, so both cases self-heal on the next run.
+DEPLOYED=$(cat "$DEPLOY_DIR/.deployed-commit" 2>/dev/null || echo "none")
+
+if [ "$DEPLOYED" = "$REMOTE_HEAD" ]; then
+    log "Prod already at ${REMOTE_HEAD:0:7}. Nothing to do."
+    status "OK" "prod current at ${REMOTE_HEAD:0:7}"
     exit 0
 fi
 
-log "New commits detected. Local: ${LOCAL_HEAD:0:7} -> Remote: ${REMOTE_HEAD:0:7}"
+log "Deploy needed. Prod: ${DEPLOYED:0:7} -> Remote: ${REMOTE_HEAD:0:7}"
 
 # Force the working tree to match remote. We can't `git pull` because the
 # hostname sed below edits tracked files, and those uncommitted edits would
@@ -127,6 +140,8 @@ pm2 restart budget-backend 2>&1 || fail "pm2 restart failed"
 log "Reloading nginx..."
 sudo /usr/bin/systemctl reload nginx 2>&1 || fail "nginx reload failed"
 
-DEPLOYED_AT=$(git -C "$STAGING_DIR" rev-parse --short HEAD)
-log "Deploy complete. Now at $DEPLOYED_AT."
-status "OK" "deployed $DEPLOYED_AT"
+# Record success only now — any failure above exits via fail() without
+# touching the marker, so the next cron run retries the whole deploy.
+echo "$REMOTE_HEAD" > "$DEPLOY_DIR/.deployed-commit"
+log "Deploy complete. Now at ${REMOTE_HEAD:0:7}."
+status "OK" "deployed ${REMOTE_HEAD:0:7}"
