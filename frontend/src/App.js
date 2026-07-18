@@ -36,7 +36,11 @@ function App() {
   const [overview, setOverview] = useState(null);
   const [recurring, setRecurring] = useState(null);
   const [apiVersion, setApiVersion] = useState(null);
+  const [chatPrompt, setChatPrompt] = useState(null);
   const fetchInProgress = useRef(false);
+
+  // "Ask why" on a budget row → open the chat with the question pre-sent
+  const handleAskAI = (text) => setChatPrompt({ text, ts: Date.now() });
 
   useEffect(() => {
     axios.get(`${API_BASE_URL}/version`)
@@ -264,6 +268,7 @@ function App() {
                   onCloseTransactionTable={handleCloseTransactionTable}
                   categoryLimitInfo={categoryLimitInfo}
                   onTransactionUpdate={handleTransactionUpdate}
+                  onAskAI={handleAskAI}
                 />
               </>
             )}
@@ -290,7 +295,12 @@ function App() {
         <CategoryManagement onClose={() => setShowCategoryManagement(false)} />
       )}
 
-      <ChatBot filters={{ period, year, month, user }} />
+      <ChatBot
+        filters={{ period, year, month, user }}
+        overview={overview}
+        recurring={recurring}
+        externalPrompt={chatPrompt}
+      />
     </div>
   );
 }

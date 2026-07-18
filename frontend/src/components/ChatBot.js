@@ -5,12 +5,43 @@ import remarkGfm from 'remark-gfm';
 
 const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/budget/api' : 'http://localhost:8000';
 
-const SUGGESTIONS = [
+const STATIC_SUGGESTIONS = [
   "What are my top spending categories?",
   "Am I over budget anywhere?",
-  "How much did I spend on dining?",
+  "Which credit cards did I use this month?",
   "Compare this month to last month"
 ];
+
+// Suggestions generated from the dashboard's live data, so the chips point
+// at what's actually happening (over-budget categories, subscriptions, pace)
+const buildSuggestions = (overview, recurring) => {
+  const suggestions = [];
+
+  const cats = overview?.categories || [];
+  cats
+    .filter(c => c.status === 'over')
+    .sort((a, b) => (b.percent_used || 0) - (a.percent_used || 0))
+    .slice(0, 2)
+    .forEach(c => suggestions.push(`Why is ${c.category} over budget this month?`));
+
+  const totals = overview?.totals;
+  if (overview?.pacing?.is_partial && totals?.total_limit > 0 &&
+      totals?.projected != null && totals.projected > totals.total_limit) {
+    suggestions.push("Am I going to stay under budget this month?");
+  }
+
+  if (recurring?.recurring?.length > 0) {
+    suggestions.push("Which subscriptions could I cut?");
+  }
+
+  suggestions.push("Explain this month in a few sentences");
+
+  for (const s of STATIC_SUGGESTIONS) {
+    if (suggestions.length >= 5) break;
+    if (!suggestions.includes(s)) suggestions.push(s);
+  }
+  return suggestions.slice(0, 5);
+};
 
 const CHAT_STORAGE_KEY = 'budget-chat-conversation';
 
@@ -26,7 +57,7 @@ const loadStoredChat = () => {
   return { messages: [], history: [] };
 };
 
-function ChatBot({ filters }) {
+function ChatBot({ filters, overview, recurring, externalPrompt }) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState(() => loadStoredChat().messages);
   const [input, setInput] = useState('');
@@ -148,6 +179,17 @@ function ChatBot({ filters }) {
     setLoading(false);
   };
 
+  // "Ask why" links on the dashboard open the chat and send their question
+  const lastExternalTs = useRef(null);
+  useEffect(() => {
+    if (!externalPrompt || !externalPrompt.text) return;
+    if (externalPrompt.ts === lastExternalTs.current) return;
+    lastExternalTs.current = externalPrompt.ts;
+    setIsOpen(true);
+    sendMessage(externalPrompt.text);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [externalPrompt]);
+
   const handleSubmit = (e) => {
     e.preventDefault();
     sendMessage(input);
@@ -212,7 +254,7 @@ function ChatBot({ filters }) {
                   <div className="chat-welcome">
                     <p>Hi! I can help you understand your spending. Try asking:</p>
                     <div className="chat-suggestions">
-                      {SUGGESTIONS.map((s, i) => (
+                      {buildSuggestions(overview, recurring).map((s, i) => (
                         <button key={i} className="chat-suggestion" onClick={() => sendMessage(s)}>
                           {s}
                         </button>

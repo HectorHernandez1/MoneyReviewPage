@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 
-const LineChart = ({ data, period, onDateClick, month, year, periodBudget }) => {
+const LineChart = ({ data, period, onDateClick, month, year, periodBudget, defaultView = 'daily' }) => {
   const svgRef = useRef();
-  const [view, setView] = useState('daily');
+  const [view, setView] = useState(defaultView);
 
   // First/last day of the displayed period, for the cumulative x-axis and pace line
   const getPeriodBounds = (fallbackDate) => {

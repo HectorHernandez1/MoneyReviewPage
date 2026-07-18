@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 const formatCurrency = (amount, decimals = 0) => {
   return new Intl.NumberFormat('en-US', {
@@ -9,7 +9,11 @@ const formatCurrency = (amount, decimals = 0) => {
   }).format(Math.abs(amount) || 0);
 };
 
-const BudgetOverviewPanel = ({ overview, onCategoryClick }) => {
+const COMPACT_ROWS = 5;
+
+const BudgetOverviewPanel = ({ overview, onCategoryClick, onAskAI, compact = false }) => {
+  const [expanded, setExpanded] = useState(false);
+
   if (!overview || !overview.categories) return null;
 
   const { categories, totals, pacing } = overview;
@@ -22,6 +26,12 @@ const BudgetOverviewPanel = ({ overview, onCategoryClick }) => {
     .sort((a, b) => b.spent - a.spent);
 
   if (limited.length === 0 && unlimited.length === 0) return null;
+
+  // Compact mode (Overview tab): most-at-risk categories first, rest behind a toggle
+  const trimmed = compact && !expanded;
+  const visibleLimited = trimmed ? limited.slice(0, COMPACT_ROWS) : limited;
+  const hiddenCount = limited.length - visibleLimited.length;
+  const showUnlimited = !trimmed && unlimited.length > 0;
 
   const barClass = (pct) => {
     if (pct > 100) return 'over';
@@ -42,7 +52,7 @@ const BudgetOverviewPanel = ({ overview, onCategoryClick }) => {
         )}
       </div>
 
-      {limited.map((c) => {
+      {visibleLimited.map((c) => {
         const pct = c.percent_used || 0;
         const overBudget = c.status === 'over';
         const projectedOver = pacing.is_partial && c.projected != null && c.budget_limit && c.projected > c.budget_limit && !overBudget;
@@ -75,15 +85,44 @@ const BudgetOverviewPanel = ({ overview, onCategoryClick }) => {
                   : `${formatCurrency(c.remaining)} left`}
                 {' '}({pct.toFixed(0)}%)
               </span>
-              {projectedOver && (
-                <span className="budget-status-projected">
-                  ⚠ on pace for {formatCurrency(c.projected)}
-                </span>
-              )}
+              <span className="budget-row-actions">
+                {projectedOver && (
+                  <span className="budget-status-projected">
+                    ⚠ on pace for {formatCurrency(c.projected)}
+                  </span>
+                )}
+                {onAskAI && (overBudget || projectedOver) && (
+                  <button
+                    className="ask-ai-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAskAI(overBudget
+                        ? `Why is ${c.category} over budget this month?`
+                        : `${c.category} is on pace to go over budget this month — why?`);
+                    }}
+                    title="Ask the AI assistant to investigate this category"
+                  >
+                    ask why →
+                  </button>
+                )}
+              </span>
             </div>
           </div>
         );
       })}
+
+      {trimmed && (hiddenCount > 0 || unlimited.length > 0) && (
+        <button className="budget-show-all" onClick={() => setExpanded(true)}>
+          {hiddenCount > 0
+            ? `Show all ${limited.length} budgeted categories${unlimited.length > 0 ? ` + ${unlimited.length} without limits` : ''} ▾`
+            : `Show ${unlimited.length} categor${unlimited.length === 1 ? 'y' : 'ies'} without limits ▾`}
+        </button>
+      )}
+      {compact && expanded && (
+        <button className="budget-show-all" onClick={() => setExpanded(false)}>
+          Show less ▴
+        </button>
+      )}
 
       {limited.length > 0 && (
         <div className="budget-overview-totals">
@@ -98,7 +137,7 @@ const BudgetOverviewPanel = ({ overview, onCategoryClick }) => {
         </div>
       )}
 
-      {unlimited.length > 0 && (
+      {showUnlimited && (
         <div className="budget-no-limit-section">
           <h3>No limit set</h3>
           {unlimited.map((c) => (

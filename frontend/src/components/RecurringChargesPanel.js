@@ -7,10 +7,17 @@ const formatCurrency = (amount) => {
   }).format(Math.abs(amount) || 0);
 };
 
-const RecurringChargesPanel = ({ recurring, estimatedTotal }) => {
-  const [expanded, setExpanded] = useState(false);
+const RecurringChargesPanel = ({ recurring, estimatedTotal, defaultExpanded = false }) => {
+  const [expanded, setExpanded] = useState(defaultExpanded);
 
-  if (!recurring || recurring.length === 0) return null;
+  if (!recurring || recurring.length === 0) {
+    return defaultExpanded ? (
+      <div className="chart-section recurring-panel">
+        <h2>Recurring Charges</h2>
+        <p className="recurring-hint">No recurring charges detected in the last 6 months.</p>
+      </div>
+    ) : null;
+  }
 
   return (
     <div className="chart-section recurring-panel">
