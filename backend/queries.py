@@ -351,6 +351,29 @@ def handle_find_recurring_charges(args):
     return _run_query(query, params)
 
 
+def handle_get_spending_by_account(args):
+    params = []
+    where = _build_period_filter(params, args.get("period", "monthly"), args.get("month"), args.get("year"), args.get("user"),
+                                 args.get("start_date"), args.get("end_date"))
+
+    category = args.get("category")
+    if category:
+        where += " AND LOWER(spending_category) LIKE %s"
+        params.append(f"%{category.lower()}%")
+
+    query = f"""
+        SELECT account_type AS account,
+               ROUND(SUM(amount)::numeric, 2) AS total,
+               COUNT(*) AS transaction_count,
+               MAX(transaction_date) AS last_used
+        FROM budget_app.transactions_view
+        WHERE {where}
+        GROUP BY account_type
+        ORDER BY total DESC
+    """
+    return _run_query(query, params)
+
+
 def handle_list_categories(args):
     query = f"""
         SELECT t.spending_category AS category,
@@ -374,6 +397,7 @@ TOOL_HANDLERS = {
     "get_spending_trend": handle_get_spending_trend,
     "find_recurring_charges": handle_find_recurring_charges,
     "get_spending_by_person": handle_get_spending_by_person,
+    "get_spending_by_account": handle_get_spending_by_account,
     "get_recent_transactions": handle_get_recent_transactions,
     "lookup_users": handle_lookup_users,
     "list_categories": handle_list_categories,

@@ -146,6 +146,22 @@ TOOLS = [
         }
     },
     {
+        "name": "get_spending_by_account",
+        "description": "Get spending grouped by the card/account each transaction was made on. Use this for questions like 'which credit cards did I use in June?', 'how much did I put on each card?', or 'what accounts does Hector's spending come from?'. Returns account names as they appear in transaction data — it cannot see card numbers, balances, or anything beyond the transactions in this dashboard.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                **_TIME_PROPS,
+                **_USER_PROP,
+                "category": {
+                    "type": "string",
+                    "description": "Optional category to filter by (case-insensitive partial match)"
+                }
+            },
+            "required": []
+        }
+    },
+    {
         "name": "lookup_users",
         "description": "Search for users/people in the database by partial name. Use this when the user mentions a name (e.g. 'I'm Hector') to find their exact full name before querying spending data.",
         "input_schema": {
@@ -170,7 +186,7 @@ TOOLS = [
     },
     {
         "name": "get_recent_transactions",
-        "description": "Get individual transactions with details. Supports sorting by date or amount and filtering by amount range. Use this for questions like 'show me my last 10 transactions', 'what was my biggest purchase this month?', or 'any transactions over $200?'",
+        "description": "Get individual transactions with details (date, merchant, amount, category, person, and the card/account used). Supports sorting by date or amount and filtering by amount range. Use this for questions like 'show me my last 10 transactions', 'what was my biggest purchase this month?', or 'any transactions over $200?'",
         "input_schema": {
             "type": "object",
             "properties": {
