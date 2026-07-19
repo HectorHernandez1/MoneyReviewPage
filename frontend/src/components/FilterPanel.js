@@ -15,6 +15,9 @@ const FilterPanel = ({ period, year, user, month, onFiltersChange }) => {
   const [pendingUser, setPendingUser] = useState(user);
   const [pendingMonth, setPendingMonth] = useState(month || '');
 
+  // Collapsed by default on mobile; CSS keeps the body always visible on desktop
+  const [mobileOpen, setMobileOpen] = useState(false);
+
   useEffect(() => {
     if (!hasInitialized.current) {
       hasInitialized.current = true;
@@ -52,6 +55,7 @@ const FilterPanel = ({ period, year, user, month, onFiltersChange }) => {
       month: pendingPeriod === 'monthly' ? monthToUse : ''
     };
     onFiltersChange(filters);
+    setMobileOpen(false);
   };
 
   const hasChanges = pendingPeriod !== period || pendingYear !== year || pendingUser !== user || 
@@ -80,10 +84,27 @@ const FilterPanel = ({ period, year, user, month, onFiltersChange }) => {
   const currentYear = new Date().getFullYear();
   const years = periods.years.length > 0 ? periods.years : Array.from({ length: 5 }, (_, i) => currentYear - i);
 
+  // Compact description of the applied filters, shown in the collapsed mobile header
+  const appliedMonthLabel = periods.months?.find(m => m.value === month)?.label || month;
+  const appliedSummary = [
+    user === 'all' ? 'All Users' : user,
+    period === 'monthly' ? appliedMonthLabel : year
+  ].filter(Boolean).join(' · ');
+
   return (
     <div className="filter-panel">
-      <h3>Filters</h3>
-      
+      <button
+        type="button"
+        className={`filter-panel-toggle ${mobileOpen ? 'open' : ''}`}
+        onClick={() => setMobileOpen(prev => !prev)}
+        aria-expanded={mobileOpen}
+      >
+        <span className="filter-panel-title">Filters</span>
+        {!mobileOpen && <span className="filter-panel-summary">{appliedSummary}</span>}
+        <span className="filter-panel-chevron">▾</span>
+      </button>
+
+      <div className={`filter-panel-body ${mobileOpen ? 'open' : ''}`}>
       <div className="filter-group">
         <label htmlFor="user-select">User</label>
         <select 
@@ -164,6 +185,7 @@ const FilterPanel = ({ period, year, user, month, onFiltersChange }) => {
         >
           Apply Filters
         </button>
+      </div>
       </div>
     </div>
   );
