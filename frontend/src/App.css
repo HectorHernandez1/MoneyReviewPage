@@ -1498,6 +1498,31 @@
   }
 }
 
+/* Status line shown while the assistant runs a data lookup mid-stream */
+.chat-status {
+  font-size: 12px;
+  font-style: italic;
+  color: #9ca3af;
+  padding: 2px 0;
+  animation: chatStatusPulse 1.4s ease-in-out infinite;
+}
+
+.chat-message-content>*+.chat-status {
+  margin-top: 6px;
+}
+
+@keyframes chatStatusPulse {
+
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
 .chat-input-area {
   display: flex;
   align-items: flex-end;

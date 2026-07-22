@@ -167,3 +167,78 @@ async def process_chat_message(message: str, conversation_history: list, filters
             "response": f"Sorry, I encountered an error: {str(e)}",
             "conversation_history": conversation_history or [],
         }
+
+
+# Friendly status lines shown in the chat while a tool call runs
+TOOL_STATUS_LABELS = {
+    "get_spending_by_category": "Looking at spending by category…",
+    "get_merchant_spending": "Checking merchant spending…",
+    "get_category_budget_status": "Checking budget status…",
+    "get_spending_comparison": "Comparing time periods…",
+    "get_spending_trend": "Analyzing spending trends…",
+    "find_recurring_charges": "Scanning for recurring charges…",
+    "get_spending_by_person": "Breaking down spending by person…",
+    "get_spending_by_account": "Checking your cards and accounts…",
+    "get_recent_transactions": "Pulling up transactions…",
+    "lookup_users": "Looking up users…",
+    "list_categories": "Checking your categories…",
+}
+
+
+def _sse(payload):
+    """Format one event as a Server-Sent Events data frame."""
+    return f"data: {json.dumps(payload)}\n\n"
+
+
+def stream_chat_events(message: str, conversation_history: list, filters: dict):
+    """
+    Streaming version of process_chat_message: a sync generator of SSE frames.
+    Starlette runs sync generators in a threadpool, so the blocking model/tool
+    calls here don't stall the event loop.
+
+    Events sent to the client:
+        {"type": "text", "delta": str}           — chunk of the answer
+        {"type": "tool_use", "label": str}       — a data lookup started
+        {"type": "done", "response": str,
+         "conversation_history": list}           — final event on success
+        {"type": "error", "message": str}        — terminal failure
+    """
+    system_prompt = _build_system_prompt(filters)
+
+    def execute_tool(tool_name, tool_args):
+        """Run one SQL tool and return its result as a JSON string."""
+        handler = TOOL_HANDLERS.get(tool_name)
+        if not handler:
+            return json.dumps({"error": f"Unknown tool: {tool_name}"})
+        args = _apply_filter_defaults(tool_name, dict(tool_args), filters)
+        result = _make_serializable(handler(args))
+        return json.dumps(result, default=str)
+
+    try:
+        model = get_model_client()
+        for event in model.stream_chat(
+            system_prompt=system_prompt,
+            history=conversation_history,
+            user_message=message,
+            tools=TOOLS,
+            execute_tool=execute_tool,
+            max_iterations=8,
+        ):
+            if event["type"] == "text":
+                yield _sse(event)
+            elif event["type"] == "tool_use":
+                label = TOOL_STATUS_LABELS.get(event["name"], "Looking at your data…")
+                yield _sse({"type": "tool_use", "name": event["name"], "label": label})
+            elif event["type"] == "final":
+                response = event["response"]
+                if response is None:
+                    response = "I had trouble processing that question. Could you try rephrasing it?"
+                    yield _sse({"type": "text", "delta": response})
+                yield _sse({
+                    "type": "done",
+                    "response": response,
+                    "conversation_history": event["history"],
+                })
+    except Exception as e:
+        print(f"Chatbot error: {e}")
+        yield _sse({"type": "error", "message": str(e)})

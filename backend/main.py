@@ -12,7 +12,8 @@ from database import (
     update_category_limit,
     add_new_category
 )
-from chatbot import process_chat_message
+from fastapi.responses import StreamingResponse
+from chatbot import process_chat_message, stream_chat_events
 from queries import (
     handle_get_category_budget_status,
     handle_get_spending_by_category,
@@ -520,6 +521,30 @@ async def chat(request: ChatRequest):
         filters=request.filters
     )
     return result
+
+
+@app.post("/chat/stream")
+async def chat_stream(request: ChatRequest):
+    """Chat with the AI budget assistant, streamed as Server-Sent Events"""
+    from models import configuration_error
+    config_error = configuration_error()
+    if config_error:
+        raise HTTPException(status_code=503, detail=f"Chatbot not configured: {config_error}")
+
+    return StreamingResponse(
+        stream_chat_events(
+            message=request.message,
+            conversation_history=request.conversation_history,
+            filters=request.filters,
+        ),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            # Tell nginx not to buffer this response — without it the proxy
+            # would batch the stream and the UI would get one big chunk.
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 if __name__ == "__main__":

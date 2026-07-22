@@ -65,6 +65,22 @@ class ModelClient(ABC):
             turns, capped at 20 entries.
         """
 
+    @abstractmethod
+    def stream_chat(self, system_prompt, history, user_message, tools, execute_tool, max_iterations=8):
+        """
+        Streaming variant of run_chat. A generator yielding event dicts:
+
+            {"type": "text", "delta": str}    — a chunk of assistant text
+            {"type": "tool_use", "name": str} — the model started a tool call
+            {"type": "final", "response": str | None, "history": list}
+                                              — always the last event; response
+                                                is the full text (None if the
+                                                loop was exhausted)
+
+        Text produced across multiple tool-calling rounds is separated by
+        blank lines, in both the streamed deltas and the final response.
+        """
+
 
 class AnthropicModel(ModelClient):
     """Claude via the Anthropic Messages API."""
@@ -115,6 +131,58 @@ class AnthropicModel(ModelClient):
         # split a tool_use/tool_result pair and break the next request.
         clean_history = [m for m in messages if isinstance(m.get("content"), str)]
         return text_response, clean_history[-20:]
+
+    def stream_chat(self, system_prompt, history, user_message, tools, execute_tool, max_iterations=8):
+        messages = list(history[-20:]) if history else []
+        messages.append({"role": "user", "content": user_message})
+
+        segments = []  # visible text from each round, joined for the saved history
+        for _ in range(max_iterations):
+            iteration_text = []
+            with self.client.messages.stream(
+                model=self.model,
+                max_tokens=4096,
+                thinking={"type": "adaptive"},
+                output_config={"effort": "medium"},
+                cache_control={"type": "ephemeral"},
+                system=system_prompt,
+                tools=tools,
+                messages=messages,
+            ) as stream:
+                for event in stream:
+                    if event.type == "content_block_delta" and event.delta.type == "text_delta":
+                        if not iteration_text and segments:
+                            iteration_text.append("\n\n")
+                            yield {"type": "text", "delta": "\n\n"}
+                        iteration_text.append(event.delta.text)
+                        yield {"type": "text", "delta": event.delta.text}
+                    elif event.type == "content_block_start" and event.content_block.type == "tool_use":
+                        yield {"type": "tool_use", "name": event.content_block.name}
+                response = stream.get_final_message()
+
+            if iteration_text:
+                segments.append("".join(iteration_text))
+
+            if response.stop_reason == "tool_use":
+                messages.append({"role": "assistant", "content": response.content})
+                tool_results = []
+                for block in response.content:
+                    if block.type == "tool_use":
+                        tool_results.append({
+                            "type": "tool_result",
+                            "tool_use_id": block.id,
+                            "content": execute_tool(block.name, dict(block.input)),
+                        })
+                messages.append({"role": "user", "content": tool_results})
+            else:
+                text_response = "".join(segments)
+                messages.append({"role": "assistant", "content": text_response})
+                clean_history = [m for m in messages if isinstance(m.get("content"), str)]
+                yield {"type": "final", "response": text_response, "history": clean_history[-20:]}
+                return
+
+        clean_history = [m for m in messages if isinstance(m.get("content"), str)]
+        yield {"type": "final", "response": None, "history": clean_history[-20:]}
 
 
 def _to_openai_tools(tools):
@@ -196,6 +264,96 @@ class OpenAIModel(ModelClient):
             and not m.get("tool_calls")
         ]
         return text_response, clean_history[-20:]
+
+    def stream_chat(self, system_prompt, history, user_message, tools, execute_tool, max_iterations=8):
+        messages = [{"role": "system", "content": system_prompt}]
+        messages += list(history[-20:]) if history else []
+        messages.append({"role": "user", "content": user_message})
+        openai_tools = _to_openai_tools(tools)
+
+        segments = []  # visible text from each round, joined for the saved history
+        for _ in range(max_iterations):
+            stream = self.client.chat.completions.create(
+                model=self.model,
+                tools=openai_tools,
+                messages=messages,
+                stream=True,
+                **{self.token_param: 4096},
+            )
+
+            iteration_text = []
+            # Tool calls stream as fragments keyed by index: the id/name arrive
+            # once, the JSON arguments arrive as string pieces to concatenate.
+            tool_calls = {}
+            for chunk in stream:
+                if not chunk.choices:
+                    continue
+                delta = chunk.choices[0].delta
+                if delta is None:
+                    continue
+                if delta.content:
+                    if not iteration_text and segments:
+                        iteration_text.append("\n\n")
+                        yield {"type": "text", "delta": "\n\n"}
+                    iteration_text.append(delta.content)
+                    yield {"type": "text", "delta": delta.content}
+                for tc in delta.tool_calls or []:
+                    entry = tool_calls.setdefault(tc.index, {"id": None, "name": None, "arguments": ""})
+                    if tc.id:
+                        entry["id"] = tc.id
+                    if tc.function:
+                        if tc.function.name:
+                            entry["name"] = tc.function.name
+                            yield {"type": "tool_use", "name": entry["name"]}
+                        if tc.function.arguments:
+                            entry["arguments"] += tc.function.arguments
+
+            if iteration_text:
+                segments.append("".join(iteration_text))
+
+            if tool_calls:
+                calls = [tool_calls[i] for i in sorted(tool_calls)]
+                messages.append({
+                    "role": "assistant",
+                    "content": "".join(iteration_text) or None,
+                    "tool_calls": [
+                        {
+                            "id": c["id"],
+                            "type": "function",
+                            "function": {"name": c["name"], "arguments": c["arguments"]},
+                        }
+                        for c in calls
+                    ],
+                })
+                for c in calls:
+                    try:
+                        args = json.loads(c["arguments"] or "{}")
+                    except json.JSONDecodeError:
+                        args = {}
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": c["id"],
+                        "content": execute_tool(c["name"], args),
+                    })
+            else:
+                text_response = "".join(segments)
+                messages.append({"role": "assistant", "content": text_response})
+                clean_history = [
+                    m for m in messages
+                    if m.get("role") in ("user", "assistant")
+                    and isinstance(m.get("content"), str)
+                    and not m.get("tool_calls")
+                ]
+                yield {"type": "final", "response": text_response, "history": clean_history[-20:]}
+                return
+
+        clean_history = [
+            m for m in messages
+            if m.get("role") in ("user", "assistant")
+            and isinstance(m.get("content"), str)
+            and not m.get("tool_calls")
+        ]
+        yield {"type": "final", "response": None, "history": clean_history[-20:]}
 
 
 def get_provider():

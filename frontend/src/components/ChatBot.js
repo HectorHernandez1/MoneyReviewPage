@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from 'react';
-import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -51,7 +50,13 @@ const loadStoredChat = () => {
   try {
     const stored = JSON.parse(localStorage.getItem(CHAT_STORAGE_KEY));
     if (stored && Array.isArray(stored.messages) && Array.isArray(stored.history)) {
-      return stored;
+      return {
+        // Drop any in-flight streaming state saved mid-response
+        messages: stored.messages
+          .filter(m => m.content)
+          .map(({ streaming, status, ...m }) => m),
+        history: stored.history
+      };
     }
   } catch (e) { /* corrupt or unavailable storage — start fresh */ }
   return { messages: [], history: [] };
@@ -146,34 +151,88 @@ function ChatBot({ filters, overview, recurring, externalPrompt }) {
     document.addEventListener('mouseup', onMouseUp);
   };
 
+  // Replace the in-progress assistant message (always the last one) in place.
+  // No-op if the conversation was cleared mid-stream.
+  const updateStreamingMessage = (patch) => {
+    setMessages(prev => {
+      const last = prev[prev.length - 1];
+      if (!last || last.role !== 'assistant' || !last.streaming) return prev;
+      return [...prev.slice(0, -1), { ...last, ...patch }];
+    });
+  };
+
   const sendMessage = async (text) => {
     if (!text.trim() || loading) return;
 
     const userMessage = { role: 'user', content: text };
-    setMessages(prev => [...prev, userMessage]);
+    // Placeholder assistant message that the stream fills in
+    setMessages(prev => [...prev, userMessage, { role: 'assistant', content: '', status: null, streaming: true }]);
     setInput('');
     setLoading(true);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/chat`, {
-        message: text,
-        conversation_history: conversationHistory,
-        filters: {
-          period: filters.period,
-          year: filters.year,
-          month: filters.month,
-          user: filters.user
-        }
+      const response = await fetch(`${API_BASE_URL}/chat/stream`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: text,
+          conversation_history: conversationHistory,
+          filters: {
+            period: filters.period,
+            year: filters.year,
+            month: filters.month,
+            user: filters.user
+          }
+        })
       });
+      if (!response.ok || !response.body) {
+        const err = new Error(`HTTP ${response.status}`);
+        err.status = response.status;
+        throw err;
+      }
 
-      const assistantMessage = { role: 'assistant', content: response.data.response };
-      setMessages(prev => [...prev, assistantMessage]);
-      setConversationHistory(response.data.conversation_history || []);
+      // Parse the SSE stream: frames are "data: {json}" separated by blank lines
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let content = '';
+      let finished = false;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const frames = buffer.split('\n\n');
+        buffer = frames.pop(); // keep any incomplete frame for the next read
+
+        for (const frame of frames) {
+          const line = frame.split('\n').find(l => l.startsWith('data: '));
+          if (!line) continue;
+          let event;
+          try {
+            event = JSON.parse(line.slice(6));
+          } catch (e) { continue; }
+
+          if (event.type === 'text') {
+            content += event.delta;
+            updateStreamingMessage({ content, status: null });
+          } else if (event.type === 'tool_use') {
+            updateStreamingMessage({ status: event.label });
+          } else if (event.type === 'done') {
+            finished = true;
+            updateStreamingMessage({ content: event.response, status: null, streaming: false });
+            setConversationHistory(event.conversation_history || []);
+          } else if (event.type === 'error') {
+            throw new Error(event.message);
+          }
+        }
+      }
+      if (!finished) throw new Error('Stream ended unexpectedly');
     } catch (error) {
-      const errorMsg = error.response?.status === 503
+      const errorMsg = error.status === 503
         ? "The AI assistant is not configured yet. Please add your API key to the backend .env file."
         : "Sorry, I couldn't process that request. Please try again.";
-      setMessages(prev => [...prev, { role: 'assistant', content: errorMsg }]);
+      updateStreamingMessage({ content: errorMsg, status: null, streaming: false });
     }
 
     setLoading(false);
@@ -267,35 +326,38 @@ function ChatBot({ filters, overview, recurring, externalPrompt }) {
                   <div key={i} className={`chat-message chat-message-${msg.role}`}>
                     <div className="chat-message-content">
                       {msg.role === 'assistant' ? (
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          components={{
-                            table: ({ node, ...props }) => (
-                              <div className="chat-table-wrap">
-                                <table {...props} />
-                              </div>
-                            ),
-                            a: ({ node, ...props }) => (
-                              <a {...props} target="_blank" rel="noopener noreferrer" />
-                            )
-                          }}
-                        >
-                          {msg.content}
-                        </ReactMarkdown>
+                        <>
+                          {msg.content ? (
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
+                              components={{
+                                table: ({ node, ...props }) => (
+                                  <div className="chat-table-wrap">
+                                    <table {...props} />
+                                  </div>
+                                ),
+                                a: ({ node, ...props }) => (
+                                  <a {...props} target="_blank" rel="noopener noreferrer" />
+                                )
+                              }}
+                            >
+                              {msg.content}
+                            </ReactMarkdown>
+                          ) : msg.streaming && !msg.status ? (
+                            <div className="chat-typing">
+                              <span></span><span></span><span></span>
+                            </div>
+                          ) : null}
+                          {msg.streaming && msg.status && (
+                            <div className="chat-status">{msg.status}</div>
+                          )}
+                        </>
                       ) : (
                         msg.content
                       )}
                     </div>
                   </div>
                 ))}
-
-                {loading && (
-                  <div className="chat-message chat-message-assistant">
-                    <div className="chat-typing">
-                      <span></span><span></span><span></span>
-                    </div>
-                  </div>
-                )}
 
                 <div ref={messagesEndRef} />
               </div>
