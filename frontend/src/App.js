@@ -45,7 +45,7 @@ function App() {
   const [recurring, setRecurring] = useState(null);
   const [apiVersion, setApiVersion] = useState(null);
   const [chatPrompt, setChatPrompt] = useState(null);
-  const fetchInProgress = useRef(false);
+  const latestRequest = useRef(0);
 
   // "Ask why" on a budget row → open the chat with the question pre-sent
   const handleAskAI = (text) => setChatPrompt({ text, ts: Date.now() });
@@ -76,12 +76,7 @@ function App() {
   };
 
   useEffect(() => {
-    if (fetchInProgress.current) return;
-    fetchInProgress.current = true;
-
-    fetchData().finally(() => {
-      fetchInProgress.current = false;
-    });
+    fetchData();
   }, [period, year, month, user]);
 
   const handleFiltersChange = (filters) => {
@@ -101,6 +96,13 @@ function App() {
   };
 
   const fetchData = async () => {
+    // Filters can change while a fetch is still in flight (the panel applies a
+    // default month as soon as /periods lands). Tag each fetch so a slower
+    // earlier response can't overwrite a newer one — the previous guard skipped
+    // the new fetch instead, which left the newer filters never requested.
+    const requestId = ++latestRequest.current;
+    const isStale = () => requestId !== latestRequest.current;
+
     setLoading(true);
     try {
       const params = new URLSearchParams({
@@ -125,6 +127,8 @@ function App() {
         axios.get(`${API_BASE_URL}/recurring-charges?${recurringParams.toString()}`)
       ]);
 
+      if (isStale()) return;
+
       setTransactions(transactionsRes.data.data);
       setSummary(transactionsRes.data.summary);
       setCategories(categoriesRes.data.categories);
@@ -133,6 +137,7 @@ function App() {
       setOverview(overviewRes.data);
       setRecurring(recurringRes.data);
     } catch (error) {
+      if (isStale()) return;
       console.error('Error fetching data:', error);
     }
     setLoading(false);

@@ -70,9 +70,19 @@ const FilterPanel = ({ period, year, user, month, onFiltersChange }) => {
       
       setUsers(usersRes.data.users || []);
       setPeriods(periodsRes.data);
-      
-      if (!pendingMonth && periodsRes.data.months?.length > 0) {
-        setPendingMonth(periodsRes.data.months[0].value);
+
+      const defaultMonth = periodsRes.data.months?.[0]?.value;
+      if (!pendingMonth && defaultMonth) {
+        setPendingMonth(defaultMonth);
+      }
+
+      // Selecting the newest month locally isn't enough: until it is applied,
+      // the dashboard still has no month and the API falls back to the current
+      // one — which has no transactions yet, so everything renders as $0.00
+      // while the dropdown claims otherwise. Apply it so the first load shows
+      // the same data the user would get by pressing Apply Filters.
+      if (period === 'monthly' && !month && defaultMonth) {
+        onFiltersChange({ period, year, user, month: defaultMonth });
       }
     } catch (error) {
       console.error('Error fetching static data:', error);

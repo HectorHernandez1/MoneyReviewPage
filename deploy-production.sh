@@ -156,7 +156,14 @@ server {
     location /budget {
         alias /var/www/sites/budget/frontend/build;
         try_files $uri $uri/ /budget/index.html;
-        
+
+        # index.html names the hashed bundles, so it must be revalidated on
+        # every load. Without this nginx sends no Cache-Control and the browser
+        # heuristically caches the HTML for days — it then asks for a bundle
+        # the last deploy deleted, and the page renders empty until a hard
+        # refresh. Assets below are content-hashed, so they stay immutable.
+        add_header Cache-Control "no-cache";
+
         # Add headers for better caching
         location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {
             expires 1y;
