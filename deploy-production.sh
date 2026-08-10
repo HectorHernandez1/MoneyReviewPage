@@ -152,6 +152,12 @@ server {
     listen 80;
     server_name your-server.local;
 
+    # Other apps sharing this server block drop a snippet in here rather than
+    # hand-editing sites-enabled — this file is regenerated on every deploy, so
+    # edits made there are lost. A glob matching nothing is not an error in
+    # nginx, so a machine without any snippets still passes nginx -t.
+    include snippets/jobhelper*.conf;
+
     # Serve frontend static files
     location /budget {
         alias /var/www/sites/budget/frontend/build;
@@ -193,11 +199,12 @@ server {
 }
 EOF
 
-# Enable the site
-if [ ! -L "/etc/nginx/sites-enabled/budget" ]; then
-    log_info "Enabling Nginx site..."
-    sudo ln -s /etc/nginx/sites-available/budget /etc/nginx/sites-enabled/
-fi
+# Enable the site. Forced and idempotent: the old guard only checked for a
+# symlink, so a plain file left here (someone editing sites-enabled directly)
+# made ln fail and, under set -e, killed the deploy before nginx was ever
+# reloaded — silently skipping the restart and the deployed-commit stamp too.
+log_info "Enabling Nginx site..."
+sudo ln -sfn /etc/nginx/sites-available/budget /etc/nginx/sites-enabled/budget
 
 # Test Nginx configuration
 log_info "Testing Nginx configuration..."
