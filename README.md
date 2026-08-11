@@ -71,9 +71,22 @@ The version (e.g. `v58-71e7e0f`) appears in the browser tab title and the dashbo
 
 1. **Set up database connection**: Copy `backend/.env.template` to `backend/.env` and add your PostgreSQL credentials
 2. **Configure the AI chatbot**: In `backend/.env`, set the API key for your chosen LLM provider (see below)
-3. **Start backend**: `cd backend && pip install -r requirements.txt && python main.py`  
-4. **Start frontend**: `cd frontend && npm install && npm start`
-5. **View dashboard**: Open http://localhost:3000
+3. **Create the conda env** (one-time):
+   ```bash
+   conda create -n budget-env python=3.11 -y
+   conda activate budget-env
+   pip install -r backend/requirements.txt
+   ```
+4. **Start backend**: `conda activate budget-env && cd backend && python main.py`
+5. **Start frontend**: `cd frontend && npm install && npm start`
+6. **View dashboard**: Open http://localhost:3000
+
+### Smoke-test the DB connection
+```bash
+conda activate budget-env
+python test-data.py
+```
+Prints a row count and date range from `budget_app.transactions_view` if the connection works.
 
 See `CLAUDE.md` for complete deployment documentation.
 
