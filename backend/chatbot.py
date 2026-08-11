@@ -4,7 +4,7 @@ import datetime as dt
 from dotenv import load_dotenv
 from tools import TOOLS
 from queries import TOOL_HANDLERS
-from models import get_model_client
+from models import get_model_client, resolve_model_choice
 from budgeting import compute_budget_overview
 import storage
 
@@ -190,7 +190,7 @@ def _save_turn(conversation_id, first_message, history):
 
 
 async def process_chat_message(message: str, conversation_history: list, filters: dict,
-                               conversation_id: str = None):
+                               conversation_id: str = None, model_choice: str = None):
     """
     Process a chat message using the configured LLM provider with tool-calling.
 
@@ -199,6 +199,8 @@ async def process_chat_message(message: str, conversation_history: list, filters
         conversation_history: List of prior messages [{role, content}, ...]
         filters: Current dashboard filters {period, year, month, user}
         conversation_id: Server-side conversation to append to (created if omitted)
+        model_choice: Optional 'provider/model' from the chat's model dropdown;
+            invalid or missing values fall back to the .env default
 
     Returns:
         dict with 'response' (text), 'conversation_history' (updated list),
@@ -209,7 +211,8 @@ async def process_chat_message(message: str, conversation_history: list, filters
     conversation_id = conversation_id or storage.new_conversation_id()
 
     try:
-        model = get_model_client()
+        provider, model_id = resolve_model_choice(model_choice)
+        model = get_model_client(provider, model_id)
         text_response, clean_history = model.run_chat(
             system_prompt=system_prompt,
             history=conversation_history,
@@ -269,7 +272,7 @@ def _sse(payload):
 
 
 def stream_chat_events(message: str, conversation_history: list, filters: dict,
-                       conversation_id: str = None):
+                       conversation_id: str = None, model_choice: str = None):
     """
     Streaming version of process_chat_message: a sync generator of SSE frames.
     Starlette runs sync generators in a threadpool, so the blocking model/tool
@@ -288,7 +291,8 @@ def stream_chat_events(message: str, conversation_history: list, filters: dict,
     conversation_id = conversation_id or storage.new_conversation_id()
 
     try:
-        model = get_model_client()
+        provider, model_id = resolve_model_choice(model_choice)
+        model = get_model_client(provider, model_id)
         for event in model.stream_chat(
             system_prompt=system_prompt,
             history=conversation_history,

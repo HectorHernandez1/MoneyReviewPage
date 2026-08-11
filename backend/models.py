@@ -398,8 +398,97 @@ class OpenAIModel(ModelClient):
         yield {"type": "final", "response": text_response, "history": clean_history[-20:]}
 
 
+# Curated model options per provider, shown in the chat's model dropdown.
+# Only providers with an API key configured are offered to the frontend.
+MODEL_OPTIONS = {
+    "anthropic": [
+        {"id": "claude-haiku-4-5", "label": "Claude Haiku 4.5 · fastest"},
+        {"id": "claude-sonnet-5", "label": "Claude Sonnet 5 · balanced"},
+        {"id": "claude-opus-5", "label": "Claude Opus 5 · most capable"},
+        {"id": "claude-fable-5", "label": "Claude Fable 5 · frontier"},
+    ],
+    "openai": [
+        {"id": "gpt-5.6-luna", "label": "GPT-5.6 Luna"},
+    ],
+    "deepseek": [
+        {"id": "deepseek-v4-flash", "label": "DeepSeek V4 Flash"},
+    ],
+    "glm": [
+        {"id": "glm-5.2", "label": "GLM 5.2"},
+    ],
+}
+
+
 def get_provider():
     return os.environ.get("LLM_PROVIDER", "anthropic").strip().lower()
+
+
+def _provider_key_env(provider):
+    if provider == "anthropic":
+        return "ANTHROPIC_API_KEY"
+    if provider in OPENAI_COMPATIBLE_PROVIDERS:
+        return OPENAI_COMPATIBLE_PROVIDERS[provider]["key_env"]
+    return None
+
+
+def _default_model_for(provider):
+    if provider == "anthropic":
+        return DEFAULT_MODELS["anthropic"]
+    return OPENAI_COMPATIBLE_PROVIDERS[provider]["default_model"]
+
+
+def list_available_models():
+    """Model options for every provider with an API key configured.
+
+    Returns [{provider, id, label, is_default}], with the .env-configured
+    provider/model (LLM_PROVIDER + optional LLM_MODEL) marked as default —
+    and appended as an extra option if it isn't in the curated list.
+    """
+    default_provider = get_provider()
+    default_model = os.environ.get("LLM_MODEL") or None
+    if default_provider not in MODEL_OPTIONS:
+        default_provider = "anthropic"
+    if not default_model:
+        default_model = _default_model_for(default_provider)
+
+    available = []
+    for provider, options in MODEL_OPTIONS.items():
+        key_env = _provider_key_env(provider)
+        if not key_env or not os.environ.get(key_env):
+            continue
+        for opt in options:
+            available.append({
+                "provider": provider,
+                "id": opt["id"],
+                "label": opt["label"],
+                "is_default": provider == default_provider and opt["id"] == default_model,
+            })
+        # .env override not in the curated list — offer it too
+        if provider == default_provider and not any(
+            o["id"] == default_model for o in options
+        ):
+            available.append({
+                "provider": provider,
+                "id": default_model,
+                "label": f"{default_model} (from .env)",
+                "is_default": True,
+            })
+    return available
+
+
+def resolve_model_choice(choice):
+    """Validate a 'provider/model' string from the frontend.
+
+    Returns (provider, model) if it names an available option (provider key
+    configured); otherwise (None, None) so callers fall back to the default.
+    """
+    if not choice or not isinstance(choice, str) or "/" not in choice:
+        return None, None
+    provider, model = choice.split("/", 1)
+    for opt in list_available_models():
+        if opt["provider"] == provider and opt["id"] == model:
+            return provider, model
+    return None, None
 
 
 def configuration_error():
@@ -418,17 +507,23 @@ def configuration_error():
     return None
 
 
-_client = None
+# Clients cached per (provider, model) so switching in the dropdown is cheap
+_clients = {}
 
 
-def get_model_client():
-    """Build (once) and return the configured model client."""
-    global _client
-    if _client is None:
+def get_model_client(provider=None, model=None):
+    """Build (once per provider+model) and return a model client.
+
+    With no arguments, uses the .env-configured default provider/model.
+    """
+    if provider is None:
         provider = get_provider()
-        model = os.environ.get("LLM_MODEL") or None
+        model = model or os.environ.get("LLM_MODEL") or None
+
+    key = (provider, model)
+    if key not in _clients:
         if provider in OPENAI_COMPATIBLE_PROVIDERS:
-            _client = OpenAIModel(model, provider=provider)
+            _clients[key] = OpenAIModel(model, provider=provider)
         else:
-            _client = AnthropicModel(model)
-    return _client
+            _clients[key] = AnthropicModel(model)
+    return _clients[key]

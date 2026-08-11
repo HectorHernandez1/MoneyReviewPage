@@ -438,6 +438,14 @@ class ChatRequest(BaseModel):
     conversation_history: List[Any] = []
     filters: dict = {}
     conversation_id: Optional[str] = None
+    model: Optional[str] = None  # 'provider/model' from the chat's dropdown
+
+
+@app.get("/chat/models")
+async def get_chat_models():
+    """Model options for the chat dropdown (providers with API keys configured)"""
+    from models import list_available_models
+    return {"models": list_available_models()}
 
 @app.post("/chat")
 async def chat(request: ChatRequest):
@@ -452,6 +460,7 @@ async def chat(request: ChatRequest):
         conversation_history=request.conversation_history,
         filters=request.filters,
         conversation_id=request.conversation_id,
+        model_choice=request.model,
     )
     return result
 
@@ -470,6 +479,7 @@ async def chat_stream(request: ChatRequest):
             conversation_history=request.conversation_history,
             filters=request.filters,
             conversation_id=request.conversation_id,
+            model_choice=request.model,
         ),
         media_type="text/event-stream",
         headers={

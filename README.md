@@ -105,6 +105,8 @@ Set in `backend/.env`:
 - `LLM_MODEL` — optional override; defaults: `claude-sonnet-5` / `gpt-5.6-luna` / `deepseek-v4-flash` / `glm-5.2`
 - API key for the selected provider: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `DEEPSEEK_API_KEY`, or `GLM_API_KEY`
 
+The `.env` values set the default, but the chat header also has a **model dropdown**: every provider with an API key configured contributes its model options (`GET /chat/models`), the pick is validated server-side, and each browser remembers its choice.
+
 DeepSeek and GLM use the OpenAI-compatible client with provider-specific base URLs. Key backend files: `backend/chatbot.py` (prompt + tool execution), `backend/models.py` (provider abstraction), `backend/tools.py` (tool schemas and SQL queries).
 
 ## Key Configuration

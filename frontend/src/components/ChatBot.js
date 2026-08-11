@@ -55,6 +55,7 @@ const buildNudge = (overview) => {
 };
 
 const CHAT_STORAGE_KEY = 'budget-chat-conversation';
+const MODEL_STORAGE_KEY = 'budget-chat-model';
 
 // Restore a cached conversation so the chat survives page reloads.
 // Close (X) and the trash button clear it; minimize keeps it.
@@ -91,6 +92,10 @@ function ChatBot({ filters, overview, recurring, externalPrompt }) {
   const [conversationHistory, setConversationHistory] = useState(stored.history);
   const [conversationId, setConversationId] = useState(stored.conversationId);
   const [chatSize, setChatSize] = useState({ width: 400, height: 520 });
+  const [models, setModels] = useState([]);
+  const [selectedModel, setSelectedModel] = useState(
+    () => localStorage.getItem(MODEL_STORAGE_KEY) || ''
+  );
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const resizingRef = useRef(null);
@@ -122,6 +127,26 @@ function ChatBot({ filters, overview, recurring, externalPrompt }) {
       }
     } catch (e) { /* storage full or unavailable — skip caching */ }
   }, [messages, conversationHistory, conversationId]);
+
+  // Load the model options for the dropdown; remember the user's pick
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/chat/models`);
+        if (!res.ok) return;
+        const data = await res.json();
+        setModels(data.models || []);
+      } catch (e) { /* backend unreachable — dropdown just stays hidden */ }
+    })();
+  }, []);
+
+  const handleModelChange = (value) => {
+    setSelectedModel(value);
+    try {
+      if (value) localStorage.setItem(MODEL_STORAGE_KEY, value);
+      else localStorage.removeItem(MODEL_STORAGE_KEY);
+    } catch (e) { /* storage unavailable */ }
+  };
 
   // Cross-device restore: on mount, adopt the server's newest conversation when
   // it continues this browser's conversation with more turns, or is a different
@@ -228,6 +253,7 @@ function ChatBot({ filters, overview, recurring, externalPrompt }) {
           message: text,
           conversation_history: conversationHistory,
           conversation_id: conversationId,
+          model: selectedModel || null,
           filters: {
             period: filters.period,
             year: filters.year,
@@ -341,6 +367,23 @@ function ChatBot({ filters, overview, recurring, externalPrompt }) {
 
           <div className="chat-header">
             <span className="chat-title">Budget Assistant</span>
+            {models.length > 0 && (
+              <select
+                className="chat-model-select"
+                value={selectedModel}
+                onChange={(e) => handleModelChange(e.target.value)}
+                title="AI model"
+              >
+                <option value="">
+                  {(models.find(m => m.is_default)?.label || 'Default model') + ' (default)'}
+                </option>
+                {models.filter(m => !m.is_default).map(m => (
+                  <option key={`${m.provider}/${m.id}`} value={`${m.provider}/${m.id}`}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            )}
             <div className="chat-header-actions">
               <button className="chat-header-btn" onClick={handleClear} title="Clear conversation">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
