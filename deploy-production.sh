@@ -156,7 +156,12 @@ server {
     # hand-editing sites-enabled — this file is regenerated on every deploy, so
     # edits made there are lost. A glob matching nothing is not an error in
     # nginx, so a machine without any snippets still passes nginx -t.
+    #
+    # One include per app, not a bare snippets/*.conf: this directory also holds
+    # nginx's own fastcgi-php.conf and snakeoil.conf, which are not valid inside
+    # a server block and would break the config test.
     include snippets/jobhelper*.conf;
+    include snippets/options*.conf;
 
     # Serve frontend static files
     location /budget {
