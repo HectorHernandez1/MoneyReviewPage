@@ -442,6 +442,53 @@ def handle_get_suggested_limits(args):
     return rows
 
 
+def handle_set_category_limit(args):
+    """Set a category's monthly budget limit (the chatbot's only write tool).
+
+    Returns the previous and new limit so the bot can report the change.
+    """
+    category = (args.get("category") or "").strip()
+    new_limit = args.get("new_limit")
+    if not category:
+        return {"error": "category is required"}
+    try:
+        new_limit = round(float(new_limit), 2)
+    except (TypeError, ValueError):
+        return {"error": "new_limit must be a number"}
+    if new_limit < 0:
+        return {"error": "new_limit cannot be negative"}
+
+    conn = None
+    try:
+        conn = psycopg2.connect(**DB_CONFIG)
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                "SELECT category_name, spending_limit FROM budget_app.spending_categories"
+                " WHERE LOWER(category_name) = LOWER(%s)",
+                (category,),
+            )
+            row = cur.fetchone()
+            if not row:
+                return {"error": f"No category named '{category}'. Call list_categories to see valid names."}
+            cur.execute(
+                "UPDATE budget_app.spending_categories SET spending_limit = %s"
+                " WHERE LOWER(category_name) = LOWER(%s)",
+                (new_limit, category),
+            )
+        conn.commit()
+        return {
+            "updated": True,
+            "category": row["category_name"],
+            "previous_limit": float(row["spending_limit"] or 0),
+            "new_limit": new_limit,
+        }
+    except Exception as e:
+        return {"error": str(e)}
+    finally:
+        if conn:
+            conn.close()
+
+
 TOOL_HANDLERS = {
     "get_spending_by_category": handle_get_spending_by_category,
     "get_merchant_spending": handle_get_merchant_spending,
@@ -455,4 +502,5 @@ TOOL_HANDLERS = {
     "lookup_users": handle_lookup_users,
     "list_categories": handle_list_categories,
     "get_suggested_limits": handle_get_suggested_limits,
+    "set_category_limit": handle_set_category_limit,
 }

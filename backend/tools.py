@@ -217,6 +217,24 @@ TOOLS = [
         }
     },
     {
+        "name": "set_category_limit",
+        "description": "Set the monthly budget limit for a spending category. This CHANGES the budget the whole dashboard uses, so only call it when the user has named the exact category and dollar amount (e.g. 'raise Dining to $450') or has just confirmed your proposed change. Never adjust limits unprompted. Returns the previous and new limit — report both back.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string",
+                    "description": "Exact category name (case-insensitive). If unsure of the name, call list_categories first."
+                },
+                "new_limit": {
+                    "type": "number",
+                    "description": "New monthly limit in dollars (0 removes the effective budget)"
+                }
+            },
+            "required": ["category", "new_limit"]
+        }
+    },
+    {
         "name": "remember",
         "description": "Save a durable memory so future conversations can use it. Use kind='fact' for facts about the household ('rent is fixed at $2000'), kind='preference' for how the user wants you to behave ('always exclude rent from cut suggestions'), and kind='insight' for conclusions from analysis you just did ('2026-08: dining overage was driven by 3 large DoorDash orders'). Only save things worth recalling in later conversations — not transient chit-chat.",
         "input_schema": {

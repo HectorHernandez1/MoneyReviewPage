@@ -90,7 +90,7 @@ Prints a row count and date range from `budget_app.transactions_view` if the con
 
 ## AI Chatbot
 
-A floating chat bubble on the dashboard answers budget questions ("What did I spend on groceries last month?", "Which credit cards did I use in June?") by querying the database through 15 tools: SQL-backed data lookups, the dashboard's budget-overview/pacing computation, suggested budget limits, and memory tools. For multi-step questions (why-investigations, monthly reviews, recommendations) it first streams a short plan of the lookups it's about to run, then executes them.
+A floating chat bubble on the dashboard answers budget questions ("What did I spend on groceries last month?", "Which credit cards did I use in June?") by querying the database through 16 tools: SQL-backed data lookups, the dashboard's budget-overview/pacing computation, suggested budget limits, memory tools, and one write tool (`set_category_limit`, which only fires on an explicit, confirmed request). For multi-step questions (why-investigations, monthly reviews, recommendations) it first streams a short plan of the lookups it's about to run, then executes them.
 
 ### Memory & conversations
 The backend creates two tables in the `budget_app` schema on startup (`chat_memory`, `chat_conversations` — idempotent `CREATE TABLE IF NOT EXISTS`; if the DB role lacks CREATE, the chatbot logs a warning and runs statelessly):

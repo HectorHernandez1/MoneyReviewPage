@@ -23,7 +23,8 @@ ALL_TOOL_HANDLERS = {
 }
 
 # Tools that take no period/month/year/user arguments at all
-_NO_FILTER_TOOLS = ("lookup_users", "list_categories", "get_suggested_limits", "remember", "forget")
+_NO_FILTER_TOOLS = ("lookup_users", "list_categories", "get_suggested_limits",
+                    "set_category_limit", "remember", "forget")
 
 
 def _make_serializable(obj):
@@ -169,6 +170,11 @@ RECOMMENDATIONS — for "what should I cut?", "how can I save $X?", "review my m
 4. get_spending_trend on the 1-2 biggest problem categories — is the problem growing or a one-off?
 Then recommend: every suggestion must cite concrete numbers (current spend, suggested limit, projected overage) and name specific merchants or subscriptions. Never suggest cutting expenses that saved memories describe as fixed. Prefer 2-3 high-impact suggestions over a long list.
 
+CHANGING BUDGET LIMITS — set_category_limit is your only tool that changes data, so use it carefully:
+- Call it when the user names the exact category and amount ("raise Dining to $450") or has just said yes to a specific change you proposed. That counts as confirmation — don't ask again.
+- If the request is vague ("fix my limits", "adjust them"), propose the specific changes with numbers first and wait for a yes.
+- After updating, report the change plainly: "Dining limit: $150 → $450." Never claim a limit was changed unless the tool returned updated=true.
+
 MEMORY RULES:
 - When the user states a durable fact or preference about their finances or how you should behave ("rent is fixed", "always ignore the Payments category", "we're saving for a trip"), save it with the remember tool and confirm in a few words.
 - After completing a substantive analysis (monthly review, why-investigation, recommendation set), save ONE short insight with kind='insight' and a period_tag (e.g. '2026-08') summarizing the key finding, so next month you can compare. If an insight for the same period and topic already exists in MEMORY, forget the old one first instead of duplicating it.
@@ -261,6 +267,7 @@ TOOL_STATUS_LABELS = {
     "list_categories": "Checking your categories…",
     "get_budget_overview": "Reviewing your budget overview…",
     "get_suggested_limits": "Calculating suggested limits…",
+    "set_category_limit": "Updating the budget limit…",
     "remember": "Saving that to memory…",
     "forget": "Forgetting that…",
 }
