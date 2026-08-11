@@ -86,8 +86,11 @@ const FilterPanel = ({ period, year, user, month, onFiltersChange }) => {
       }
     } catch (error) {
       console.error('Error fetching static data:', error);
-      // Names come from the backend; offline fallback shows just the default
-      setUsers(['All Users']);
+      // Names come from the backend; keep any already-loaded list, and keep
+      // the currently applied person selectable so the filter stays usable
+      setUsers(prev => prev.length > 1
+        ? prev
+        : ['All Users', ...(user && user.toLowerCase() !== 'all' ? [user] : [])]);
     }
     setLoading(false);
   };

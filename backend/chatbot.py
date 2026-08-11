@@ -1,6 +1,8 @@
 import json
+import queue
 import decimal
 import datetime as dt
+import threading
 from dotenv import load_dotenv
 from tools import TOOLS
 from queries import TOOL_HANDLERS
@@ -92,8 +94,13 @@ def _make_execute_tool(filters):
         handler = ALL_TOOL_HANDLERS.get(tool_name)
         if not handler:
             return json.dumps({"error": f"Unknown tool: {tool_name}"})
-        args = _apply_filter_defaults(tool_name, dict(tool_args), filters)
-        result = _make_serializable(handler(args))
+        try:
+            args = _apply_filter_defaults(tool_name, dict(tool_args), filters)
+            result = _make_serializable(handler(args))
+        except Exception as e:
+            # A malformed argument (e.g. month="August") must come back as a
+            # tool error the model can correct — not abort the whole turn
+            result = {"error": f"{type(e).__name__}: {e}. Check the argument format and retry."}
         return json.dumps(result, default=str)
 
     return execute_tool
@@ -195,6 +202,21 @@ def _save_turn(conversation_id, first_message, history):
     storage.upsert_conversation(conversation_id, title, history)
 
 
+def _authoritative_history(conversation_id, client_history):
+    """Prefer the server-saved history when it has more turns.
+
+    A device with a stale localStorage cache would otherwise rewind a
+    conversation that was continued elsewhere; the longer copy wins, and the
+    done event then re-syncs the stale device.
+    """
+    saved = storage.get_conversation(conversation_id)
+    if saved:
+        server_history = saved.get("history") or []
+        if len(server_history) > len(client_history or []):
+            return server_history
+    return client_history or []
+
+
 def process_chat_message(message: str, conversation_history: list, filters: dict,
                          conversation_id: str = None, model_choice: str = None):
     """
@@ -218,6 +240,7 @@ def process_chat_message(message: str, conversation_history: list, filters: dict
     system_prompt = _build_system_prompt(filters)
     execute_tool = _make_execute_tool(filters)
     conversation_id = conversation_id or storage.new_conversation_id()
+    conversation_history = _authoritative_history(conversation_id, conversation_history)
 
     try:
         provider, model_id = resolve_model_choice(model_choice)
@@ -232,12 +255,10 @@ def process_chat_message(message: str, conversation_history: list, filters: dict
         )
 
         if text_response is None:
-            return {
-                "response": "I had trouble processing that question. Could you try rephrasing it?",
-                "conversation_history": clean_history,
-                "conversation_id": conversation_id,
-            }
+            text_response = "I had trouble processing that question. Could you try rephrasing it?"
+            clean_history = clean_history + [{"role": "assistant", "content": text_response}]
 
+        # Save on every completed turn so server and client histories match
         _save_turn(conversation_id, message, clean_history)
 
         return {
@@ -281,12 +302,23 @@ def _sse(payload):
     return f"data: {json.dumps(payload)}\n\n"
 
 
+# A keepalive comment goes out whenever this long passes with nothing else to
+# send, so proxies (nginx: 60s read timeout) never see a dead connection —
+# regardless of whether the silence comes from model thinking, tool execution,
+# or the provider itself.
+PING_INTERVAL_SECONDS = 10
+
+_STREAM_END = object()
+
+
 def stream_chat_events(message: str, conversation_history: list, filters: dict,
                        conversation_id: str = None, model_choice: str = None):
     """
     Streaming version of process_chat_message: a sync generator of SSE frames.
     Starlette runs sync generators in a threadpool, so the blocking model/tool
-    calls here don't stall the event loop.
+    calls here don't stall the event loop. The model runs in its own thread
+    and hands events over a queue, so keepalive pings are emitted on wall-clock
+    time even while the provider is completely silent.
 
     Events sent to the client:
         {"type": "text", "delta": str}           — chunk of the answer
@@ -299,40 +331,61 @@ def stream_chat_events(message: str, conversation_history: list, filters: dict,
     system_prompt = _build_system_prompt(filters)
     execute_tool = _make_execute_tool(filters)
     conversation_id = conversation_id or storage.new_conversation_id()
+    conversation_history = _authoritative_history(conversation_id, conversation_history)
 
-    try:
-        provider, model_id = resolve_model_choice(model_choice)
-        model = get_model_client(provider, model_id)
-        for event in model.stream_chat(
-            system_prompt=system_prompt,
-            history=conversation_history,
-            user_message=message,
-            tools=TOOLS,
-            execute_tool=execute_tool,
-            max_iterations=MAX_ITERATIONS,
-        ):
-            if event["type"] == "text":
-                yield _sse(event)
-            elif event["type"] == "ping":
-                # SSE comment frame: keeps nginx from timing out the quiet
-                # connection during long thinking; clients ignore it
-                yield ": ping\n\n"
-            elif event["type"] == "tool_use":
-                label = TOOL_STATUS_LABELS.get(event["name"], "Looking at your data…")
-                yield _sse({"type": "tool_use", "name": event["name"], "label": label})
-            elif event["type"] == "final":
-                response = event["response"]
-                if response is None:
-                    response = "I had trouble processing that question. Could you try rephrasing it?"
-                    yield _sse({"type": "text", "delta": response})
-                else:
-                    _save_turn(conversation_id, message, event["history"])
-                yield _sse({
-                    "type": "done",
-                    "response": response,
-                    "conversation_history": event["history"],
-                    "conversation_id": conversation_id,
-                })
-    except Exception as e:
-        print(f"Chatbot error: {e}")
-        yield _sse({"type": "error", "message": str(e)})
+    events = queue.Queue()
+
+    def pump():
+        try:
+            provider, model_id = resolve_model_choice(model_choice)
+            model = get_model_client(provider, model_id)
+            for event in model.stream_chat(
+                system_prompt=system_prompt,
+                history=conversation_history,
+                user_message=message,
+                tools=TOOLS,
+                execute_tool=execute_tool,
+                max_iterations=MAX_ITERATIONS,
+            ):
+                events.put(event)
+        except Exception as e:
+            print(f"Chatbot error: {e}")
+            events.put({"type": "error", "message": str(e)})
+        finally:
+            events.put(_STREAM_END)
+
+    threading.Thread(target=pump, daemon=True).start()
+
+    while True:
+        try:
+            event = events.get(timeout=PING_INTERVAL_SECONDS)
+        except queue.Empty:
+            # SSE comment frame — clients ignore it, proxies see a live stream
+            yield ": ping\n\n"
+            continue
+
+        if event is _STREAM_END:
+            return
+        if event["type"] == "text":
+            yield _sse(event)
+        elif event["type"] == "tool_use":
+            label = TOOL_STATUS_LABELS.get(event["name"], "Looking at your data…")
+            yield _sse({"type": "tool_use", "name": event["name"], "label": label})
+        elif event["type"] == "error":
+            yield _sse(event)
+            return
+        elif event["type"] == "final":
+            response = event["response"]
+            history = event["history"]
+            if response is None:
+                response = "I had trouble processing that question. Could you try rephrasing it?"
+                yield _sse({"type": "text", "delta": response})
+                history = history + [{"role": "assistant", "content": response}]
+            # Save on every completed turn so server and client histories match
+            _save_turn(conversation_id, message, history)
+            yield _sse({
+                "type": "done",
+                "response": response,
+                "conversation_history": history,
+                "conversation_id": conversation_id,
+            })

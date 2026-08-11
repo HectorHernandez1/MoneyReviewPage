@@ -10,6 +10,7 @@ never in this (public) repository.
 """
 
 import json
+import time
 import uuid
 import psycopg2
 import psycopg2.extras
@@ -18,8 +19,12 @@ from db import DB_CONFIG
 
 MEMORY_KINDS = ("fact", "preference", "insight")
 
-# None = bootstrap not attempted yet; True/False after ensure_tables()
+# None = bootstrap not attempted yet; True/False after ensure_tables().
+# A False result is retried after a cooldown so a transient DB outage at
+# startup doesn't disable storage until the next process restart.
 _available = None
+_last_attempt = 0.0
+_RETRY_SECONDS = 60
 
 _DDL = """
 CREATE TABLE IF NOT EXISTS budget_app.chat_memory (
@@ -58,7 +63,8 @@ def _execute(query, params=(), fetch=False):
 
 def ensure_tables():
     """Create storage tables if missing. Safe to call on every startup."""
-    global _available
+    global _available, _last_attempt
+    _last_attempt = time.monotonic()
     try:
         _execute(_DDL)
         _available = True
@@ -67,15 +73,18 @@ def ensure_tables():
         print(
             f"WARNING: chatbot storage unavailable ({e}). "
             "Memory and server-side conversation history are disabled; "
-            "the chatbot still works statelessly. If this is a permissions "
-            "error, grant CREATE on schema budget_app to the app DB role "
+            "the chatbot still works statelessly and will retry every "
+            f"{_RETRY_SECONDS}s. If this is a permissions error, grant "
+            "CREATE on schema budget_app to the app DB role "
             "or run the DDL in backend/storage.py manually."
         )
     return _available
 
 
 def storage_available():
-    if _available is None:
+    if _available is None or (
+        _available is False and time.monotonic() - _last_attempt > _RETRY_SECONDS
+    ):
         ensure_tables()
     return _available
 
@@ -163,7 +172,13 @@ def upsert_conversation(conversation_id, title, history):
             INSERT INTO budget_app.chat_conversations (id, title, history, updated_at)
             VALUES (%s, %s, %s::jsonb, now())
             ON CONFLICT (id) DO UPDATE
-            SET history = EXCLUDED.history,
+            SET history = CASE
+                    -- Guard against a stale device wiping newer turns: never
+                    -- let a shorter history replace a longer saved one
+                    WHEN jsonb_array_length(EXCLUDED.history)
+                         >= jsonb_array_length(chat_conversations.history)
+                    THEN EXCLUDED.history
+                    ELSE chat_conversations.history END,
                 title = CASE WHEN chat_conversations.title = '' THEN EXCLUDED.title
                              ELSE chat_conversations.title END,
                 updated_at = now()

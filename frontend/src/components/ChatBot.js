@@ -36,11 +36,13 @@ const buildSuggestions = (overview, recurring) => {
 
   suggestions.push("Explain this month in a few sentences");
 
+  // Cap at 6: the fixed "Review my month" chip plus up to 5 data-driven ones,
+  // so seeding the review chip doesn't displace a data-driven suggestion
   for (const s of STATIC_SUGGESTIONS) {
-    if (suggestions.length >= 5) break;
+    if (suggestions.length >= 6) break;
     if (!suggestions.includes(s)) suggestions.push(s);
   }
-  return suggestions.slice(0, 5);
+  return suggestions.slice(0, 6);
 };
 
 // A short banner above the suggestion chips when spending is pacing over budget
@@ -99,6 +101,9 @@ function ChatBot({ filters, overview, recurring, externalPrompt }) {
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const resizingRef = useRef(null);
+  // True while a message is in flight — the server-restore effect must never
+  // replace state mid-stream (it would orphan the streaming placeholder)
+  const sendingRef = useRef(false);
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -158,7 +163,7 @@ function ChatBot({ filters, overview, recurring, externalPrompt }) {
         const res = await fetch(`${API_BASE_URL}/chat/conversations/latest`);
         if (!res.ok) return;
         const { conversation } = await res.json();
-        if (cancelled || !conversation || !Array.isArray(conversation.history)) return;
+        if (cancelled || sendingRef.current || !conversation || !Array.isArray(conversation.history)) return;
         const serverTime = Date.parse(conversation.updated_at) || 0;
         const localTime = Date.parse(stored.updatedAt) || 0;
         const sameConversation = conversation.id === stored.conversationId;
@@ -238,6 +243,7 @@ function ChatBot({ filters, overview, recurring, externalPrompt }) {
 
   const sendMessage = async (text) => {
     if (!text.trim() || loading) return;
+    sendingRef.current = true;
 
     const userMessage = { role: 'user', content: text };
     // Placeholder assistant message that the stream fills in
@@ -318,6 +324,7 @@ function ChatBot({ filters, overview, recurring, externalPrompt }) {
       });
     }
 
+    sendingRef.current = false;
     setLoading(false);
   };
 
@@ -337,8 +344,13 @@ function ChatBot({ filters, overview, recurring, externalPrompt }) {
     sendMessage(input);
   };
 
-  // Clear starts a fresh conversation; the old one stays saved on the server
+  // Clear discards the conversation everywhere: local state AND the server
+  // copy — otherwise the next page load would re-adopt it from the server
   const handleClear = () => {
+    if (conversationId) {
+      fetch(`${API_BASE_URL}/chat/conversations/${conversationId}`, { method: 'DELETE' })
+        .catch(() => { /* backend unreachable — worst case it reappears */ });
+    }
     setMessages([]);
     setConversationHistory([]);
     setConversationId(null);

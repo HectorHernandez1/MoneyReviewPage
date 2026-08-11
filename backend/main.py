@@ -447,13 +447,20 @@ async def get_chat_models():
     from models import list_available_models
     return {"models": list_available_models()}
 
+def _check_chat_configured(request: ChatRequest):
+    """503 only when neither the default provider nor the request's selected
+    model is usable — a valid dropdown pick must work even if the .env
+    default provider has no key."""
+    from models import configuration_error, resolve_model_choice
+    config_error = configuration_error()
+    if config_error and resolve_model_choice(request.model) == (None, None):
+        raise HTTPException(status_code=503, detail=f"Chatbot not configured: {config_error}")
+
+
 @app.post("/chat")
 def chat(request: ChatRequest):
     """Chat with the AI budget assistant"""
-    from models import configuration_error
-    config_error = configuration_error()
-    if config_error:
-        raise HTTPException(status_code=503, detail=f"Chatbot not configured: {config_error}")
+    _check_chat_configured(request)
 
     result = process_chat_message(
         message=request.message,
@@ -468,10 +475,7 @@ def chat(request: ChatRequest):
 @app.post("/chat/stream")
 async def chat_stream(request: ChatRequest):
     """Chat with the AI budget assistant, streamed as Server-Sent Events"""
-    from models import configuration_error
-    config_error = configuration_error()
-    if config_error:
-        raise HTTPException(status_code=503, detail=f"Chatbot not configured: {config_error}")
+    _check_chat_configured(request)
 
     return StreamingResponse(
         stream_chat_events(
