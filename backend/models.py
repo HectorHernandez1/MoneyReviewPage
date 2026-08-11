@@ -95,6 +95,7 @@ class AnthropicModel(ModelClient):
         messages.append({"role": "user", "content": user_message})
 
         text_response = None
+        round_texts = []  # visible text from each round, for a partial answer on exhaustion
         for _ in range(max_iterations):
             response = self.client.messages.create(
                 model=self.model,
@@ -111,6 +112,9 @@ class AnthropicModel(ModelClient):
             )
 
             if response.stop_reason == "tool_use":
+                round_text = "".join(b.text for b in response.content if b.type == "text")
+                if round_text:
+                    round_texts.append(round_text)
                 # Keep the full content (incl. thinking blocks) for the in-turn loop
                 messages.append({"role": "assistant", "content": response.content})
                 tool_results = []
@@ -123,9 +127,18 @@ class AnthropicModel(ModelClient):
                         })
                 messages.append({"role": "user", "content": tool_results})
             else:
-                text_response = "".join(b.text for b in response.content if b.type == "text")
+                final_text = "".join(b.text for b in response.content if b.type == "text")
+                if final_text:
+                    round_texts.append(final_text)
+                text_response = "\n\n".join(round_texts)
                 messages.append({"role": "assistant", "content": text_response})
                 break
+        else:
+            # Loop exhausted mid-analysis: return what we have rather than nothing
+            if round_texts:
+                text_response = "\n\n".join(round_texts) + \
+                    "\n\n_(I ran out of analysis steps, so this is a partial answer — ask a follow-up to continue.)_"
+                messages.append({"role": "assistant", "content": text_response})
 
         # Tool and thinking blocks stay server-side: slicing raw messages could
         # split a tool_use/tool_result pair and break the next request.
@@ -181,6 +194,16 @@ class AnthropicModel(ModelClient):
                 yield {"type": "final", "response": text_response, "history": clean_history[-20:]}
                 return
 
+        # Loop exhausted mid-analysis: finish with what we have rather than nothing
+        if segments:
+            note = "\n\n_(I ran out of analysis steps, so this is a partial answer — ask a follow-up to continue.)_"
+            yield {"type": "text", "delta": note}
+            text_response = "".join(segments) + note
+            messages.append({"role": "assistant", "content": text_response})
+            clean_history = [m for m in messages if isinstance(m.get("content"), str)]
+            yield {"type": "final", "response": text_response, "history": clean_history[-20:]}
+            return
+
         clean_history = [m for m in messages if isinstance(m.get("content"), str)]
         yield {"type": "final", "response": None, "history": clean_history[-20:]}
 
@@ -220,6 +243,7 @@ class OpenAIModel(ModelClient):
         openai_tools = _to_openai_tools(tools)
 
         text_response = None
+        round_texts = []  # visible text from each round, for a partial answer on exhaustion
         for _ in range(max_iterations):
             response = self.client.chat.completions.create(
                 model=self.model,
@@ -230,6 +254,8 @@ class OpenAIModel(ModelClient):
             msg = response.choices[0].message
 
             if msg.tool_calls:
+                if msg.content:
+                    round_texts.append(msg.content)
                 messages.append({
                     "role": "assistant",
                     "content": msg.content,
@@ -253,9 +279,17 @@ class OpenAIModel(ModelClient):
                         "content": execute_tool(tc.function.name, args),
                     })
             else:
-                text_response = msg.content or ""
+                if msg.content:
+                    round_texts.append(msg.content)
+                text_response = "\n\n".join(round_texts)
                 messages.append({"role": "assistant", "content": text_response})
                 break
+        else:
+            # Loop exhausted mid-analysis: return what we have rather than nothing
+            if round_texts:
+                text_response = "\n\n".join(round_texts) + \
+                    "\n\n_(I ran out of analysis steps, so this is a partial answer — ask a follow-up to continue.)_"
+                messages.append({"role": "assistant", "content": text_response})
 
         clean_history = [
             m for m in messages
@@ -347,13 +381,21 @@ class OpenAIModel(ModelClient):
                 yield {"type": "final", "response": text_response, "history": clean_history[-20:]}
                 return
 
+        # Loop exhausted mid-analysis: finish with what we have rather than nothing
+        text_response = None
+        if segments:
+            note = "\n\n_(I ran out of analysis steps, so this is a partial answer — ask a follow-up to continue.)_"
+            yield {"type": "text", "delta": note}
+            text_response = "".join(segments) + note
+            messages.append({"role": "assistant", "content": text_response})
+
         clean_history = [
             m for m in messages
             if m.get("role") in ("user", "assistant")
             and isinstance(m.get("content"), str)
             and not m.get("tool_calls")
         ]
-        yield {"type": "final", "response": None, "history": clean_history[-20:]}
+        yield {"type": "final", "response": text_response, "history": clean_history[-20:]}
 
 
 def get_provider():

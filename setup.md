@@ -12,9 +12,13 @@
    ```bash
    cp backend/.env.template backend/.env
    ```
-2. Edit `backend/.env` with your database credentials:
+2. Edit `backend/.env` with your database credentials (the backend reads these discrete variables):
    ```
-   DATABASE_URL=postgresql://username:password@localhost:5432/your_database
+   DB_NAME=your_database
+   DB_USER=username
+   DB_PASSWORD=password
+   DB_HOST=localhost
+   DB_PORT=5432
    ```
 
 ### 2. Backend Setup

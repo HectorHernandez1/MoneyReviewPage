@@ -426,6 +426,22 @@ def get_category_monthly_averages(lookback_months=6):
     return _run_query(query, [lookback])
 
 
+def handle_get_suggested_limits(args):
+    """Suggested monthly budget limits from recent spending history.
+
+    suggested_limit = avg monthly spend rounded up to the nearest $10 —
+    the same number the Manage Categories screen shows.
+    """
+    import math
+
+    rows = get_category_monthly_averages(args.get("lookback_months", 6))
+    if isinstance(rows, dict) and "error" in rows:
+        return rows
+    for row in rows:
+        row["suggested_limit"] = math.ceil(float(row["avg_monthly_spend"]) / 10) * 10
+    return rows
+
+
 TOOL_HANDLERS = {
     "get_spending_by_category": handle_get_spending_by_category,
     "get_merchant_spending": handle_get_merchant_spending,
@@ -438,4 +454,5 @@ TOOL_HANDLERS = {
     "get_recent_transactions": handle_get_recent_transactions,
     "lookup_users": handle_lookup_users,
     "list_categories": handle_list_categories,
+    "get_suggested_limits": handle_get_suggested_limits,
 }

@@ -43,11 +43,12 @@ const CategoryManagement = ({ onClose }) => {
         setLoading(false);
     };
 
-    // Round the recent average up to the nearest $10 for a realistic limit
+    // The server computes suggested_limit (recent average rounded up to the
+    // nearest $10) so the dashboard and the AI chatbot suggest the same number
     const suggestedLimitFor = (categoryName) => {
         const s = suggestions[categoryName.toLowerCase()];
-        if (!s || !s.avg_monthly_spend) return null;
-        return Math.ceil(parseFloat(s.avg_monthly_spend) / 10) * 10;
+        if (!s || !s.suggested_limit) return null;
+        return parseFloat(s.suggested_limit);
     };
 
     const handleEditClick = (category) => {

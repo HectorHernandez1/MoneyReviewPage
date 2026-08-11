@@ -88,11 +88,16 @@ python test-data.py
 ```
 Prints a row count and date range from `budget_app.transactions_view` if the connection works.
 
-See `CLAUDE.md` for complete deployment documentation.
-
 ## AI Chatbot
 
-A floating chat bubble on the dashboard answers budget questions ("What did I spend on groceries last month?", "Which credit cards did I use in June?") by querying the database through 11 SQL-backed tools. The backend is stateless — conversation history lives in the frontend (and is cached in localStorage so it survives page reloads).
+A floating chat bubble on the dashboard answers budget questions ("What did I spend on groceries last month?", "Which credit cards did I use in June?") by querying the database through 15 tools: SQL-backed data lookups, the dashboard's budget-overview/pacing computation, suggested budget limits, and memory tools. For multi-step questions (why-investigations, monthly reviews, recommendations) it first streams a short plan of the lookups it's about to run, then executes them.
+
+### Memory & conversations
+The backend creates two tables in the `budget_app` schema on startup (`chat_memory`, `chat_conversations` — idempotent `CREATE TABLE IF NOT EXISTS`; if the DB role lacks CREATE, the chatbot logs a warning and runs statelessly):
+- **Memory**: durable facts and preferences the user states ("rent is fixed"), plus one-line insights saved after each substantive analysis (tagged with the period, e.g. `2026-08`) so next month's review can compare. Household-scoped; the bot can `remember` and `forget` on request.
+- **Conversations**: chat history is saved server-side after each completed answer, so a conversation started on one device resumes on another. localStorage remains as a cache/offline fallback. Clearing the chat starts a new conversation; old ones stay on the server (`GET/DELETE /chat/conversations/...`).
+
+Note: like the rest of the API, these endpoints have no authentication — memory and history are readable by anyone who can reach the backend, so run it only on a trusted network.
 
 ### Model Provider Configuration
 Set in `backend/.env`:
@@ -156,6 +161,8 @@ curl -X POST http://localhost:8000/chat \
 - Spending category analysis
 - Multi-user support
 - AI chatbot for natural-language spending questions (markdown-rendered replies)
+- Chatbot plans multi-step analyses out loud, remembers facts/preferences/insights across conversations, and gives data-grounded recommendations
+- "Review my month" one-click structured review; server-saved conversations resume across devices
 - Responsive design
 
 ## Tech Stack

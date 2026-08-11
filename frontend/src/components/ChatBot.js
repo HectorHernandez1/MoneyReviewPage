@@ -14,7 +14,8 @@ const STATIC_SUGGESTIONS = [
 // Suggestions generated from the dashboard's live data, so the chips point
 // at what's actually happening (over-budget categories, subscriptions, pace)
 const buildSuggestions = (overview, recurring) => {
-  const suggestions = [];
+  // Always first: triggers the chatbot's structured monthly-review playbook
+  const suggestions = ["Review my month"];
 
   const cats = overview?.categories || [];
   cats
@@ -42,6 +43,17 @@ const buildSuggestions = (overview, recurring) => {
   return suggestions.slice(0, 5);
 };
 
+// A short banner above the suggestion chips when spending is pacing over budget
+const buildNudge = (overview) => {
+  const totals = overview?.totals;
+  if (overview?.pacing?.is_partial && totals?.total_limit > 0 &&
+      totals?.projected != null && totals.projected > totals.total_limit) {
+    const over = (totals.projected - totals.total_limit).toFixed(0);
+    return `You're pacing over budget — projected $${totals.projected.toFixed(0)} vs a $${totals.total_limit.toFixed(0)} limit ($${over} over). Ask me why!`;
+  }
+  return null;
+};
+
 const CHAT_STORAGE_KEY = 'budget-chat-conversation';
 
 // Restore a cached conversation so the chat survives page reloads.
@@ -55,19 +67,29 @@ const loadStoredChat = () => {
         messages: stored.messages
           .filter(m => m.content)
           .map(({ streaming, status, ...m }) => m),
-        history: stored.history
+        history: stored.history,
+        conversationId: stored.conversationId || null,
+        updatedAt: stored.updatedAt || null
       };
     }
   } catch (e) { /* corrupt or unavailable storage — start fresh */ }
-  return { messages: [], history: [] };
+  return { messages: [], history: [], conversationId: null, updatedAt: null };
 };
+
+// Rebuild UI message bubbles from a server-saved {role, content} history
+const messagesFromHistory = (history) =>
+  (history || [])
+    .filter(m => typeof m.content === 'string' && m.content)
+    .map(m => ({ role: m.role, content: m.content }));
 
 function ChatBot({ filters, overview, recurring, externalPrompt }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState(() => loadStoredChat().messages);
+  const [stored] = useState(loadStoredChat);
+  const [messages, setMessages] = useState(stored.messages);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [conversationHistory, setConversationHistory] = useState(() => loadStoredChat().history);
+  const [conversationHistory, setConversationHistory] = useState(stored.history);
+  const [conversationId, setConversationId] = useState(stored.conversationId);
   const [chatSize, setChatSize] = useState({ width: 400, height: 520 });
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -93,11 +115,39 @@ function ChatBot({ filters, overview, recurring, externalPrompt }) {
       } else {
         localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify({
           messages: messages.slice(-40),
-          history: conversationHistory
+          history: conversationHistory,
+          conversationId,
+          updatedAt: new Date().toISOString()
         }));
       }
     } catch (e) { /* storage full or unavailable — skip caching */ }
-  }, [messages, conversationHistory]);
+  }, [messages, conversationHistory, conversationId]);
+
+  // Cross-device restore: on mount, adopt the server's newest conversation when
+  // it continues this browser's conversation with more turns, or is a different
+  // conversation updated more recently than the local cache.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/chat/conversations/latest`);
+        if (!res.ok) return;
+        const { conversation } = await res.json();
+        if (cancelled || !conversation || !Array.isArray(conversation.history)) return;
+        const serverTime = Date.parse(conversation.updated_at) || 0;
+        const localTime = Date.parse(stored.updatedAt) || 0;
+        const sameConversation = conversation.id === stored.conversationId;
+        if ((sameConversation && conversation.history.length > stored.history.length) ||
+            (!sameConversation && serverTime > localTime)) {
+          setConversationId(conversation.id);
+          setConversationHistory(conversation.history);
+          setMessages(messagesFromHistory(conversation.history));
+        }
+      } catch (e) { /* backend unreachable — keep the local cache */ }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Auto-grow the input with its content, up to the CSS max-height
   useEffect(() => {
@@ -177,6 +227,7 @@ function ChatBot({ filters, overview, recurring, externalPrompt }) {
         body: JSON.stringify({
           message: text,
           conversation_history: conversationHistory,
+          conversation_id: conversationId,
           filters: {
             period: filters.period,
             year: filters.year,
@@ -222,6 +273,7 @@ function ChatBot({ filters, overview, recurring, externalPrompt }) {
             finished = true;
             updateStreamingMessage({ content: event.response, status: null, streaming: false });
             setConversationHistory(event.conversation_history || []);
+            if (event.conversation_id) setConversationId(event.conversation_id);
           } else if (event.type === 'error') {
             throw new Error(event.message);
           }
@@ -254,9 +306,11 @@ function ChatBot({ filters, overview, recurring, externalPrompt }) {
     sendMessage(input);
   };
 
+  // Clear starts a fresh conversation; the old one stays saved on the server
   const handleClear = () => {
     setMessages([]);
     setConversationHistory([]);
+    setConversationId(null);
   };
 
   const handleKeyDown = (e) => {
@@ -311,6 +365,9 @@ function ChatBot({ filters, overview, recurring, externalPrompt }) {
           <div className="chat-messages">
                 {messages.length === 0 && !loading && (
                   <div className="chat-welcome">
+                    {buildNudge(overview) && (
+                      <div className="chat-nudge">⚠ {buildNudge(overview)}</div>
+                    )}
                     <p>Hi! I can help you understand your spending. Try asking:</p>
                     <div className="chat-suggestions">
                       {buildSuggestions(overview, recurring).map((s, i) => (

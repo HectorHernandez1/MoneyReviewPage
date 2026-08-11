@@ -15,12 +15,11 @@ from database import (
 from fastapi.responses import StreamingResponse
 from chatbot import process_chat_message, stream_chat_events
 from queries import (
-    handle_get_category_budget_status,
-    handle_get_spending_by_category,
     handle_find_recurring_charges,
-    get_category_monthly_averages,
+    handle_get_suggested_limits,
 )
-import calendar
+from budgeting import compute_budget_overview
+import storage
 import os
 import pandas as pd
 from datetime import datetime, date
@@ -46,6 +45,13 @@ APP_VERSION = _get_version()
 STARTED_AT = datetime.now().strftime("%Y-%m-%d %H:%M")
 
 app = FastAPI(title="Budget Data API")
+
+
+@app.on_event("startup")
+async def _init_storage():
+    # Idempotent CREATE TABLE IF NOT EXISTS for chatbot memory/conversations.
+    # Fails soft: without CREATE privilege the chatbot just runs statelessly.
+    storage.ensure_tables()
 
 app.add_middleware(
     CORSMiddleware,
@@ -391,92 +397,15 @@ async def get_budget_overview(
     """
     Budget vs actual per category, plus pacing (projected end-of-period spend)
     and a comparison against the previous period at the same point in time.
+    Computation lives in budgeting.compute_budget_overview, shared with the
+    chatbot's get_budget_overview tool.
     """
-    today = date.today()
-
-    if period == "yearly":
-        eff_year = int(year) if year else today.year
-        days_in_period = 366 if calendar.isleap(eff_year) else 365
-        if eff_year < today.year:
-            days_elapsed = days_in_period
-        elif eff_year > today.year:
-            days_elapsed = 0
-        else:
-            days_elapsed = (today - date(eff_year, 1, 1)).days + 1
-        current_args = {"period": "yearly", "year": eff_year, "user": user}
-        prev_label = str(eff_year - 1)
-        prev_full_args = {"period": "yearly", "year": eff_year - 1, "user": user}
-        # Same point last year: Jan 1 through today's month/day (clamped for leap years)
-        prev_end_day = min(today.day, calendar.monthrange(eff_year - 1, today.month)[1])
-        prev_partial_args = {
-            "start_date": f"{eff_year - 1}-01-01",
-            "end_date": f"{eff_year - 1}-{today.month:02d}-{prev_end_day:02d}",
-            "user": user,
-        }
-    else:
-        eff_month = month if month else today.strftime("%Y-%m")
-        y, m = int(eff_month[:4]), int(eff_month[5:7])
-        days_in_period = calendar.monthrange(y, m)[1]
-        if (y, m) < (today.year, today.month):
-            days_elapsed = days_in_period
-        elif (y, m) > (today.year, today.month):
-            days_elapsed = 0
-        else:
-            days_elapsed = today.day
-        current_args = {"period": "monthly", "month": eff_month, "user": user}
-        pm_y, pm_m = (y - 1, 12) if m == 1 else (y, m - 1)
-        prev_label = date(pm_y, pm_m, 1).strftime("%B %Y")
-        prev_month = f"{pm_y:04d}-{pm_m:02d}"
-        prev_full_args = {"period": "monthly", "month": prev_month, "user": user}
-        prev_end_day = min(days_elapsed, calendar.monthrange(pm_y, pm_m)[1])
-        prev_partial_args = {
-            "start_date": f"{prev_month}-01",
-            "end_date": f"{prev_month}-{max(prev_end_day, 1):02d}",
-            "user": user,
-        }
-
-    categories = _raise_on_query_error(handle_get_category_budget_status(current_args))
-
-    fraction = days_elapsed / days_in_period if days_in_period else 0
-    is_partial = 0 < fraction < 1
-
-    total_spent = sum(c["spent"] for c in categories)
-    total_limit = sum(c["budget_limit"] for c in categories if c["budget_limit"])
-    spent_in_limited = sum(c["spent"] for c in categories if c["budget_limit"])
-
-    for c in categories:
-        c["projected"] = round(c["spent"] / fraction, 2) if is_partial else (c["spent"] if fraction >= 1 else None)
-
-    # Previous period totals: full period, and through the same day-of-period
-    prev_full = _raise_on_query_error(handle_get_spending_by_category(prev_full_args))
-    prev_total = round(sum(float(r["total"]) for r in prev_full), 2)
-    if is_partial and days_elapsed > 0:
-        prev_partial_rows = _raise_on_query_error(handle_get_spending_by_category(prev_partial_args))
-        prev_to_same_point = round(sum(float(r["total"]) for r in prev_partial_rows), 2)
-    else:
-        prev_to_same_point = prev_total if fraction >= 1 else 0.0
-
-    return {
-        "categories": categories,
-        "totals": {
-            "spent": round(total_spent, 2),
-            "total_limit": round(total_limit, 2),
-            "spent_in_limited": round(spent_in_limited, 2),
-            "remaining": round(total_limit - spent_in_limited, 2),
-            "projected": round(total_spent / fraction, 2) if is_partial else (round(total_spent, 2) if fraction >= 1 else None),
-        },
-        "pacing": {
-            "days_elapsed": days_elapsed,
-            "days_in_period": days_in_period,
-            "fraction_elapsed": round(fraction, 4),
-            "is_partial": is_partial,
-        },
-        "previous": {
-            "label": prev_label,
-            "total": prev_total,
-            "to_same_point": prev_to_same_point,
-        },
-    }
+    return _raise_on_query_error(compute_budget_overview({
+        "period": period,
+        "year": year,
+        "month": month,
+        "user": user,
+    }))
 
 
 @app.get("/recurring-charges")
@@ -497,8 +426,10 @@ async def get_recurring_charges(
 
 @app.get("/category-suggested-limits")
 async def get_category_suggested_limits(lookback_months: Optional[int] = 6):
-    """Average and max monthly spend per category over recent full months"""
-    rows = _raise_on_query_error(get_category_monthly_averages(lookback_months))
+    """Average/max monthly spend per category over recent full months, plus a
+    suggested_limit (avg rounded up to the nearest $10) — the same handler the
+    chatbot's get_suggested_limits tool uses."""
+    rows = _raise_on_query_error(handle_get_suggested_limits({"lookback_months": lookback_months}))
     return {"suggestions": rows, "lookback_months": lookback_months}
 
 
@@ -506,6 +437,7 @@ class ChatRequest(BaseModel):
     message: str
     conversation_history: List[Any] = []
     filters: dict = {}
+    conversation_id: Optional[str] = None
 
 @app.post("/chat")
 async def chat(request: ChatRequest):
@@ -518,7 +450,8 @@ async def chat(request: ChatRequest):
     result = await process_chat_message(
         message=request.message,
         conversation_history=request.conversation_history,
-        filters=request.filters
+        filters=request.filters,
+        conversation_id=request.conversation_id,
     )
     return result
 
@@ -536,6 +469,7 @@ async def chat_stream(request: ChatRequest):
             message=request.message,
             conversation_history=request.conversation_history,
             filters=request.filters,
+            conversation_id=request.conversation_id,
         ),
         media_type="text/event-stream",
         headers={
@@ -545,6 +479,37 @@ async def chat_stream(request: ChatRequest):
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@app.get("/chat/conversations")
+async def get_chat_conversations():
+    """Server-saved conversations, newest first (empty if storage is unavailable)"""
+    return {
+        "conversations": storage.list_conversations(),
+        "storage_available": storage.storage_available(),
+    }
+
+
+@app.get("/chat/conversations/latest")
+async def get_latest_chat_conversation():
+    """The most recently updated conversation, for resuming across devices"""
+    conversation = storage.get_latest_conversation()
+    return {"conversation": conversation}
+
+
+@app.get("/chat/conversations/{conversation_id}")
+async def get_chat_conversation(conversation_id: str):
+    conversation = storage.get_conversation(conversation_id)
+    if conversation is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return {"conversation": conversation}
+
+
+@app.delete("/chat/conversations/{conversation_id}")
+async def delete_chat_conversation(conversation_id: str):
+    if not storage.delete_conversation(conversation_id):
+        raise HTTPException(status_code=500, detail="Failed to delete conversation")
+    return {"success": True}
 
 
 if __name__ == "__main__":

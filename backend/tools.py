@@ -185,6 +185,79 @@ TOOLS = [
         }
     },
     {
+        "name": "get_budget_overview",
+        "description": "Get the full budget overview the dashboard shows: per-category budget vs actual with projected end-of-period spend, overall totals, pacing (days elapsed, fraction of period), and a comparison against the previous period both in full and through the same point in time. Use this first for questions like 'how am I doing this month?', 'am I on pace?', 'review my month', or any recommendation question.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "period": {
+                    "type": "string",
+                    "enum": ["monthly", "yearly"],
+                    "description": "Query a single month or a full year. Defaults to the dashboard's current view if omitted."
+                },
+                "month": {"type": "string", "description": "Month in YYYY-MM format (e.g. '2026-02')"},
+                "year": {"type": "integer", "description": "Year for yearly queries (e.g. 2026)"},
+                **_USER_PROP
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "get_suggested_limits",
+        "description": "Get suggested monthly budget limits per category, based on average and max monthly spend over recent full months (current partial month excluded). Returns avg_monthly_spend, max_monthly_spend, months_with_spending, and suggested_limit (avg rounded up to the nearest $10). Use this when recommending budget limits or spending cuts.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "lookback_months": {
+                    "type": "integer",
+                    "description": "How many full months of history to average over (default 6, max 24)"
+                }
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "remember",
+        "description": "Save a durable memory so future conversations can use it. Use kind='fact' for facts about the household ('rent is fixed at $2000'), kind='preference' for how the user wants you to behave ('always exclude rent from cut suggestions'), and kind='insight' for conclusions from analysis you just did ('2026-08: dining overage was driven by 3 large DoorDash orders'). Only save things worth recalling in later conversations — not transient chit-chat.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "kind": {
+                    "type": "string",
+                    "enum": ["fact", "preference", "insight"],
+                    "description": "What sort of memory this is"
+                },
+                "content": {
+                    "type": "string",
+                    "description": "The memory itself, one or two self-contained sentences"
+                },
+                "person": {
+                    "type": "string",
+                    "description": "Person this memory is about, if it is person-specific (omit for household-wide)"
+                },
+                "period_tag": {
+                    "type": "string",
+                    "description": "For insights: the period analyzed, YYYY-MM or YYYY (e.g. '2026-08')"
+                }
+            },
+            "required": ["kind", "content"]
+        }
+    },
+    {
+        "name": "forget",
+        "description": "Delete a saved memory by id (ids are listed in the MEMORY section of your instructions). Use when the user asks you to forget something or when a memory is wrong or outdated.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "memory_id": {
+                    "type": "integer",
+                    "description": "The id of the memory to forget"
+                }
+            },
+            "required": ["memory_id"]
+        }
+    },
+    {
         "name": "get_recent_transactions",
         "description": "Get individual transactions with details (date, merchant, amount, category, person, and the card/account used). Supports sorting by date or amount and filtering by amount range. Use this for questions like 'show me my last 10 transactions', 'what was my biggest purchase this month?', or 'any transactions over $200?'",
         "input_schema": {
