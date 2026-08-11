@@ -303,6 +303,10 @@ def stream_chat_events(message: str, conversation_history: list, filters: dict,
         ):
             if event["type"] == "text":
                 yield _sse(event)
+            elif event["type"] == "ping":
+                # SSE comment frame: keeps nginx from timing out the quiet
+                # connection during long thinking; clients ignore it
+                yield ": ping\n\n"
             elif event["type"] == "tool_use":
                 label = TOOL_STATUS_LABELS.get(event["name"], "Looking at your data…")
                 yield _sse({"type": "tool_use", "name": event["name"], "label": label})

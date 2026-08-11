@@ -245,6 +245,7 @@ function ChatBot({ filters, overview, recurring, externalPrompt }) {
     setInput('');
     setLoading(true);
 
+    let content = '';
     try {
       const response = await fetch(`${API_BASE_URL}/chat/stream`, {
         method: 'POST',
@@ -272,7 +273,6 @@ function ChatBot({ filters, overview, recurring, externalPrompt }) {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
-      let content = '';
       let finished = false;
 
       while (true) {
@@ -309,8 +309,13 @@ function ChatBot({ filters, overview, recurring, externalPrompt }) {
     } catch (error) {
       const errorMsg = error.status === 503
         ? "The AI assistant is not configured yet. Please add your API key to the backend .env file."
-        : "Sorry, I couldn't process that request. Please try again.";
-      updateStreamingMessage({ content: errorMsg, status: null, streaming: false });
+        : "Sorry, I couldn't finish that request. Please try again.";
+      // Keep any partial answer that already streamed; append the error below it
+      updateStreamingMessage({
+        content: content ? `${content}\n\n_${errorMsg}_` : errorMsg,
+        status: null,
+        streaming: false
+      });
     }
 
     setLoading(false);

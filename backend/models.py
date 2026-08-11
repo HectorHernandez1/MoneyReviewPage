@@ -11,7 +11,13 @@ Select the provider with environment variables:
 
 import os
 import json
+import time
 from abc import ABC, abstractmethod
+
+# During long thinking phases the model emits no visible output; without
+# occasional keepalive events the nginx proxy (60s read timeout) kills the
+# "silent" SSE connection mid-answer. Emit a ping if we've been quiet this long.
+_PING_INTERVAL_SECONDS = 10
 
 DEFAULT_MODELS = {
     "anthropic": "claude-sonnet-5",
@@ -150,6 +156,7 @@ class AnthropicModel(ModelClient):
         messages.append({"role": "user", "content": user_message})
 
         segments = []  # visible text from each round, joined for the saved history
+        last_emit = time.monotonic()
         for _ in range(max_iterations):
             iteration_text = []
             with self.client.messages.stream(
@@ -169,8 +176,15 @@ class AnthropicModel(ModelClient):
                             yield {"type": "text", "delta": "\n\n"}
                         iteration_text.append(event.delta.text)
                         yield {"type": "text", "delta": event.delta.text}
+                        last_emit = time.monotonic()
                     elif event.type == "content_block_start" and event.content_block.type == "tool_use":
                         yield {"type": "tool_use", "name": event.content_block.name}
+                        last_emit = time.monotonic()
+                    elif time.monotonic() - last_emit > _PING_INTERVAL_SECONDS:
+                        # Thinking deltas etc. reach us but produce no visible
+                        # output — keep the SSE connection alive through them
+                        yield {"type": "ping"}
+                        last_emit = time.monotonic()
                 response = stream.get_final_message()
 
             if iteration_text:
@@ -306,6 +320,7 @@ class OpenAIModel(ModelClient):
         openai_tools = _to_openai_tools(tools)
 
         segments = []  # visible text from each round, joined for the saved history
+        last_emit = time.monotonic()
         for _ in range(max_iterations):
             stream = self.client.chat.completions.create(
                 model=self.model,
@@ -320,6 +335,11 @@ class OpenAIModel(ModelClient):
             # once, the JSON arguments arrive as string pieces to concatenate.
             tool_calls = {}
             for chunk in stream:
+                if time.monotonic() - last_emit > _PING_INTERVAL_SECONDS:
+                    # Reasoning/empty chunks produce no visible output — keep
+                    # the SSE connection alive through them
+                    yield {"type": "ping"}
+                    last_emit = time.monotonic()
                 if not chunk.choices:
                     continue
                 delta = chunk.choices[0].delta
@@ -331,6 +351,7 @@ class OpenAIModel(ModelClient):
                         yield {"type": "text", "delta": "\n\n"}
                     iteration_text.append(delta.content)
                     yield {"type": "text", "delta": delta.content}
+                    last_emit = time.monotonic()
                 for tc in delta.tool_calls or []:
                     entry = tool_calls.setdefault(tc.index, {"id": None, "name": None, "arguments": ""})
                     if tc.id:
