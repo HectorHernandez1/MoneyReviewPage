@@ -1,19 +1,7 @@
-import os
 import pandas as pd
 import psycopg2
-from dotenv import load_dotenv
 
-load_dotenv()
-
-# Database configuration for remote server
-DB_CONFIG = {
-    "dbname": os.environ.get("DB_NAME"),
-    "user": os.environ.get("DB_USER"),
-    "password": os.environ.get("DB_PASSWORD"),
-    "host": os.environ.get("DB_HOST"),
-    "port": os.environ.get("DB_PORT"),
-    "options": "-c search_path=budget_app"
-}
+from db import DB_CONFIG, EXCLUDED_CATEGORIES
 
 async def get_category_limit(category_name):
     """Fetch the configured spending limit for a category."""
@@ -65,8 +53,8 @@ async def get_transactions_data(
     """
     
     # Base query
-    base_query = """
-    SELECT 
+    base_query = f"""
+    SELECT
         amount,
         merchant_name,
         spending_category,
@@ -74,7 +62,7 @@ async def get_transactions_data(
         transaction_date,
         account_type
     FROM budget_app.transactions_view
-    WHERE spending_category NOT IN ('Installment','Payments','Refunds & Returns')
+    WHERE spending_category NOT IN {EXCLUDED_CATEGORIES}
     """
     
     # Build WHERE conditions

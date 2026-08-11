@@ -195,10 +195,13 @@ def _save_turn(conversation_id, first_message, history):
     storage.upsert_conversation(conversation_id, title, history)
 
 
-async def process_chat_message(message: str, conversation_history: list, filters: dict,
-                               conversation_id: str = None, model_choice: str = None):
+def process_chat_message(message: str, conversation_history: list, filters: dict,
+                         conversation_id: str = None, model_choice: str = None):
     """
     Process a chat message using the configured LLM provider with tool-calling.
+
+    Plain sync on purpose: the model and DB calls block, so the /chat endpoint
+    is a sync `def` and FastAPI runs the whole thing in its threadpool.
 
     Args:
         message: The user's question

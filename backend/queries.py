@@ -1,20 +1,7 @@
-import os
 import psycopg2
 import psycopg2.extras
-from dotenv import load_dotenv
 
-load_dotenv()
-
-DB_CONFIG = {
-    "dbname": os.environ.get("DB_NAME"),
-    "user": os.environ.get("DB_USER"),
-    "password": os.environ.get("DB_PASSWORD"),
-    "host": os.environ.get("DB_HOST"),
-    "port": os.environ.get("DB_PORT"),
-    "options": "-c search_path=budget_app"
-}
-
-EXCLUDED_CATEGORIES = "('Installment','Payments','Refunds & Returns')"
+from db import DB_CONFIG, EXCLUDED_CATEGORIES, EXCLUDED_CATEGORY_NAMES
 
 
 def _clamp_limit(value, default, maximum):
@@ -133,6 +120,21 @@ def handle_get_category_budget_status(args):
     results = _run_query(query, params)
     if isinstance(results, dict) and "error" in results:
         return results
+
+    # The query drives from transactions, so a category with a limit but no
+    # spending in the period would silently vanish — under-reporting the total
+    # budget and hiding fully-unused categories. Add those back with spent=0.
+    present = {r["category"].lower() for r in results}
+    limited = _run_query(
+        "SELECT category_name, spending_limit FROM budget_app.spending_categories"
+        " WHERE spending_limit > 0",
+        [],
+    )
+    if not (isinstance(limited, dict) and "error" in limited):
+        for row in limited:
+            name = row["category_name"]
+            if name.lower() not in present and name not in EXCLUDED_CATEGORY_NAMES:
+                results.append({"category": name, "spent": 0, "budget_limit": row["spending_limit"]})
 
     # Limits are monthly amounts; a yearly query compares a year of spending
     # against a year of budget (custom date ranges keep the monthly limit).

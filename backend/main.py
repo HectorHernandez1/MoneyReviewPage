@@ -388,7 +388,7 @@ def _raise_on_query_error(result):
 
 
 @app.get("/budget-overview")
-async def get_budget_overview(
+def get_budget_overview(
     period: Optional[str] = "monthly",
     year: Optional[int] = None,
     month: Optional[str] = None,
@@ -409,7 +409,7 @@ async def get_budget_overview(
 
 
 @app.get("/recurring-charges")
-async def get_recurring_charges(
+def get_recurring_charges(
     user: Optional[str] = None,
     lookback_months: Optional[int] = 6,
     months_required: Optional[int] = 3
@@ -425,7 +425,7 @@ async def get_recurring_charges(
 
 
 @app.get("/category-suggested-limits")
-async def get_category_suggested_limits(lookback_months: Optional[int] = 6):
+def get_category_suggested_limits(lookback_months: Optional[int] = 6):
     """Average/max monthly spend per category over recent full months, plus a
     suggested_limit (avg rounded up to the nearest $10) — the same handler the
     chatbot's get_suggested_limits tool uses."""
@@ -448,14 +448,14 @@ async def get_chat_models():
     return {"models": list_available_models()}
 
 @app.post("/chat")
-async def chat(request: ChatRequest):
+def chat(request: ChatRequest):
     """Chat with the AI budget assistant"""
     from models import configuration_error
     config_error = configuration_error()
     if config_error:
         raise HTTPException(status_code=503, detail=f"Chatbot not configured: {config_error}")
 
-    result = await process_chat_message(
+    result = process_chat_message(
         message=request.message,
         conversation_history=request.conversation_history,
         filters=request.filters,
@@ -492,7 +492,7 @@ async def chat_stream(request: ChatRequest):
 
 
 @app.get("/chat/conversations")
-async def get_chat_conversations():
+def get_chat_conversations():
     """Server-saved conversations, newest first (empty if storage is unavailable)"""
     return {
         "conversations": storage.list_conversations(),
@@ -501,14 +501,14 @@ async def get_chat_conversations():
 
 
 @app.get("/chat/conversations/latest")
-async def get_latest_chat_conversation():
+def get_latest_chat_conversation():
     """The most recently updated conversation, for resuming across devices"""
     conversation = storage.get_latest_conversation()
     return {"conversation": conversation}
 
 
 @app.get("/chat/conversations/{conversation_id}")
-async def get_chat_conversation(conversation_id: str):
+def get_chat_conversation(conversation_id: str):
     conversation = storage.get_conversation(conversation_id)
     if conversation is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
@@ -516,7 +516,7 @@ async def get_chat_conversation(conversation_id: str):
 
 
 @app.delete("/chat/conversations/{conversation_id}")
-async def delete_chat_conversation(conversation_id: str):
+def delete_chat_conversation(conversation_id: str):
     if not storage.delete_conversation(conversation_id):
         raise HTTPException(status_code=500, detail="Failed to delete conversation")
     return {"success": True}

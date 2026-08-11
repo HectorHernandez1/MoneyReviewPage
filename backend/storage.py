@@ -14,7 +14,7 @@ import uuid
 import psycopg2
 import psycopg2.extras
 
-from queries import DB_CONFIG
+from db import DB_CONFIG
 
 MEMORY_KINDS = ("fact", "preference", "insight")
 
